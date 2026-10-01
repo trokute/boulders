@@ -3498,6 +3498,12 @@ function drawCharacters(context) {
 			}
 
 			context.save();
+			if (char[i].ang != 0) {
+				let cy = char[i].y - char[i].h / 2;
+				context.translate(char[i].x, cy);
+				context.rotate(char[i].ang);
+				context.translate(-char[i].x, -cy + (charD[currCharID][1] - char[i].h) / 2);
+			}
 			if (char[i].charState >= 3) {
 				if (qTimer > 0 || char[i].justChanged >= 1) {
 					var littleJump = 0;
@@ -3733,7 +3739,7 @@ function drawCharacters(context) {
 				context.save();
 				context.globalAlpha = char[i].temp / 70;
 				context.fillStyle = 'rgb(255,' + (100 - char[i].temp) + ',' + (100 - char[i].temp) + ')';
-				context.fillRect(char[i].x - char[i].w, char[i].y - char[i].h, char[i].w * 2, char[i].h);
+				context.fillRect(char[i].x - charD[currCharID][0], char[i].y - charD[currCharID][1], charD[currCharID][0] * 2, charD[currCharID][1]);
 				context.restore();
 			}
 			context.restore();
@@ -4758,6 +4764,448 @@ function endDeath(i) {
 	if (i == control) changeControl();
 }
 
+let rbM = 0.05;
+const rbTN = [{x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0}];
+const rbCorner = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+
+function rbOK(i) {
+	return char[i].charState == 6 && char[i].id != 35 && char[i].id != 36 && !ifCarried(i);
+}
+
+function rbOn(i) {
+	return rbOK(i) && char[i].deathTimer >= 30 && char[i].standingOn < 0;
+}
+
+function rbAng(a) {
+	return a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
+}
+
+function rbTile(x, y) {
+	if (x < 0 || x >= levelWidth || y < 0) return 1;
+	if (y >= levelHeight) return 0;
+	return thisLevel[y][x];
+}
+
+function rbFit(c, cx, cy) {
+	let d = charD[c.id];
+	let s = Math.abs(Math.sin(c.ang));
+	let k = Math.abs(Math.cos(c.ang));
+	let ey = s * d[0] + k * d[1] / 2;
+	c.w = k * d[0] + s * d[1] / 2;
+	c.h = ey * 2;
+	c.x = cx;
+	c.y = cy + ey;
+}
+
+function rbHold(i) {
+	let c = char[i];
+	let d = charD[c.id];
+	c.av = 0;
+	c.slp = 0;
+	if (ifCarried(i)) {
+		c.ang = Math.abs(c.ang) < 0.02 ? 0 : c.ang * 0.6;
+		c.w = d[0];
+		c.h = d[1];
+	} else if (c.ang != 0) {
+		let q = Math.PI / 2;
+		let y = c.y;
+		c.ang = rbAng(Math.round(c.ang / q) * q);
+		rbFit(c, c.x, 0);
+		c.y = y;
+	}
+}
+
+function rbPoly(b) {
+	let s = Math.sin(b.a);
+	let k = Math.cos(b.a);
+	let p = [];
+	for (let j = 0; j < 4; j++) {
+		let lx = rbCorner[j][0] * b.hw;
+		let ly = rbCorner[j][1] * b.hh;
+		p.push({x: b.x + lx * k - ly * s, y: b.y + lx * s + ly * k});
+	}
+	return p;
+}
+
+function rbNorms(p) {
+	let n = [];
+	for (let k = 0; k < 4; k++) {
+		let q = p[(k + 1) % 4];
+		let ex = q.x - p[k].x;
+		let ey = q.y - p[k].y;
+		let l = Math.sqrt(ex * ex + ey * ey);
+		n.push({x: ey / l, y: -ex / l});
+	}
+	return n;
+}
+
+function rbAxis(p, q, np, mk) {
+	let best = -1e9;
+	let bk = -1;
+	for (let k = 0; k < 4; k++) {
+		let s = 1e9;
+		for (let j = 0; j < 4; j++) {
+			s = Math.min(s, (q[j].x - p[k].x) * np[k].x + (q[j].y - p[k].y) * np[k].y);
+		}
+		if (s > rbM) return null;
+		if (mk && !mk[k]) continue;
+		if (s > best) {
+			best = s;
+			bk = k;
+		}
+	}
+	return bk < 0 ? null : {s: best, k: bk};
+}
+
+function rbClip(pts, nx, ny, off) {
+	let out = [];
+	let d1 = nx * pts[0].x + ny * pts[0].y - off;
+	let d2 = nx * pts[1].x + ny * pts[1].y - off;
+	if (d1 <= 0) out.push(pts[0]);
+	if (d2 <= 0) out.push(pts[1]);
+	if (d1 * d2 < 0) {
+		let t = d1 / (d1 - d2);
+		out.push({x: pts[0].x + (pts[1].x - pts[0].x) * t, y: pts[0].y + (pts[1].y - pts[0].y) * t});
+	}
+	return out;
+}
+
+function rbMan(pa, pb, na, nb, mka, mkb) {
+	let ra = rbAxis(pa, pb, na, mka);
+	if (!ra) return null;
+	let rb = rbAxis(pb, pa, nb, mkb);
+	if (!rb) return null;
+	let flip = rb.s > ra.s + 0.01;
+	let ref = flip ? pb : pa;
+	let inc = flip ? pa : pb;
+	let nr = flip ? nb[rb.k] : na[ra.k];
+	let ni = flip ? na : nb;
+	let kr = flip ? rb.k : ra.k;
+	let e = 0;
+	let md = 1e9;
+	for (let k = 0; k < 4; k++) {
+		let d = ni[k].x * nr.x + ni[k].y * nr.y;
+		if (d < md) {
+			md = d;
+			e = k;
+		}
+	}
+	let r1 = ref[kr];
+	let r2 = ref[(kr + 1) % 4];
+	let tx = r2.x - r1.x;
+	let ty = r2.y - r1.y;
+	let tl = Math.sqrt(tx * tx + ty * ty);
+	tx /= tl;
+	ty /= tl;
+	let pts = [inc[e], inc[(e + 1) % 4]];
+	pts = rbClip(pts, -tx, -ty, -(tx * r1.x + ty * r1.y));
+	if (pts.length < 2) return null;
+	pts = rbClip(pts, tx, ty, tx * r2.x + ty * r2.y);
+	let cp = [];
+	for (let j = 0; j < pts.length; j++) {
+		let s = (pts[j].x - r1.x) * nr.x + (pts[j].y - r1.y) * nr.y;
+		if (s <= rbM) cp.push({x: pts[j].x, y: pts[j].y, d: -s});
+	}
+	if (cp.length == 0) return null;
+	let sg = flip ? -1 : 1;
+	return {a: null, b: null, n: {x: nr.x * sg, y: nr.y * sg}, pts: cp, t: -1, sv: 0};
+}
+
+function rbTiles(b, ms) {
+	let p = rbPoly(b);
+	let na = rbNorms(p);
+	let x0 = 1e9;
+	let x1 = -1e9;
+	let y0 = 1e9;
+	let y1 = -1e9;
+	for (let j = 0; j < 4; j++) {
+		x0 = Math.min(x0, p[j].x);
+		x1 = Math.max(x1, p[j].x);
+		y0 = Math.min(y0, p[j].y);
+		y1 = Math.max(y1, p[j].y);
+	}
+	for (let ty = Math.floor((y0 - rbM) / 30); ty <= Math.floor((y1 + rbM) / 30); ty++) {
+		for (let tx = Math.floor((x0 - rbM) / 30); tx <= Math.floor((x1 + rbM) / 30); tx++) {
+			let t = rbTile(tx, ty);
+			let bp = blockProperties[t];
+			if (!(bp[0] || bp[1] || bp[2] || bp[3])) continue;
+			let full = allSolid(t);
+			let mk = [bp[1], bp[2], bp[0], bp[3]];
+			let nb = [[tx, ty - 1], [tx + 1, ty], [tx, ty + 1], [tx - 1, ty]];
+			let tp = [{x: tx * 30, y: ty * 30}, {x: tx * 30 + 30, y: ty * 30}, {x: tx * 30 + 30, y: ty * 30 + 30}, {x: tx * 30, y: ty * 30 + 30}];
+			for (let k = 0; k < 4; k++) {
+				if (!mk[k]) continue;
+				if (allSolid(rbTile(nb[k][0], nb[k][1]))) {
+					mk[k] = false;
+				} else if (!full) {
+					let m = 1e9;
+					for (let j = 0; j < 4; j++) {
+						m = Math.min(m, (p[j].x - tp[k].x) * rbTN[k].x + (p[j].y - tp[k].y) * rbTN[k].y);
+					}
+					if (m < -0.6) mk[k] = false;
+				}
+			}
+			let m = rbMan(p, tp, na, rbTN, null, mk);
+			if (m) {
+				m.a = b;
+				m.t = t;
+				m.tx = tx;
+				m.ty = ty;
+				if (t == 14 || t == 83) m.sv = -2.48;
+				if (t == 16 || t == 85) m.sv = 2.48;
+				ms.push(m);
+			}
+		}
+	}
+}
+
+function rbRel(m, p) {
+	let a = m.a;
+	let b = m.b;
+	let vax = a ? a.vx - a.av * p.ay : 0;
+	let vay = a ? a.vy + a.av * p.ax : 0;
+	let vbx = b ? b.vx - b.av * p.by : 0;
+	let vby = b ? b.vy + b.av * p.bx : 0;
+	return [vbx - vax + (m.n.y > 0.5 ? m.sv : 0), vby - vay];
+}
+
+function rbPush(m, p, jx, jy) {
+	let a = m.a;
+	let b = m.b;
+	if (a) {
+		a.vx -= jx * a.im;
+		a.vy -= jy * a.im;
+		a.av -= a.ii * (p.ax * jy - p.ay * jx);
+	}
+	if (b) {
+		b.vx += jx * b.im;
+		b.vy += jy * b.im;
+		b.av += b.ii * (p.bx * jy - p.by * jx);
+	}
+}
+
+function rbSolve(ms, dt) {
+	for (let m of ms) {
+		let a = m.a;
+		let b = m.b;
+		let ia = a ? a.im : 0;
+		let ib = b ? b.im : 0;
+		let iia = a ? a.ii : 0;
+		let iib = b ? b.ii : 0;
+		let tx = -m.n.y;
+		let ty = m.n.x;
+		for (let p of m.pts) {
+			p.ax = a ? p.x - a.x : 0;
+			p.ay = a ? p.y - a.y : 0;
+			p.bx = b ? p.x - b.x : 0;
+			p.by = b ? p.y - b.y : 0;
+			let cn1 = p.ax * m.n.y - p.ay * m.n.x;
+			let cn2 = p.bx * m.n.y - p.by * m.n.x;
+			let ct1 = p.ax * ty - p.ay * tx;
+			let ct2 = p.bx * ty - p.by * tx;
+			p.kn = ia + ib + cn1 * cn1 * iia + cn2 * cn2 * iib;
+			p.kt = ia + ib + ct1 * ct1 * iia + ct2 * ct2 * iib;
+			p.jn = 0;
+			p.jt = 0;
+			let rv = rbRel(m, p);
+			let vn = rv[0] * m.n.x + rv[1] * m.n.y;
+			p.bias = p.d < 0 ? p.d / dt : (vn < -2.5 ? -0.12 * vn : 0);
+			let reach = -p.d <= -vn * dt;
+			if (m.t == 13 && m.n.y > 0.5 && vn < -1 && reach && !b) m.hit = true;
+			if (b && a && vn < -0.3 && reach) {
+				if (a.sl) a.c.slp = 0;
+				if (b.sl) b.c.slp = 0;
+			}
+		}
+	}
+	for (let it = 0; it < 8; it++) {
+		for (let m of ms) {
+			let tx = -m.n.y;
+			let ty = m.n.x;
+			for (let p of m.pts) {
+				let rv = rbRel(m, p);
+				let dj = -(rv[0] * tx + rv[1] * ty) / p.kt;
+				let lim = 0.6 * p.jn;
+				let nj = Math.max(-lim, Math.min(lim, p.jt + dj));
+				dj = nj - p.jt;
+				p.jt = nj;
+				rbPush(m, p, tx * dj, ty * dj);
+			}
+			for (let p of m.pts) {
+				let rv = rbRel(m, p);
+				let dj = -(rv[0] * m.n.x + rv[1] * m.n.y - p.bias) / p.kn;
+				let nj = Math.max(0, p.jn + dj);
+				dj = nj - p.jn;
+				p.jn = nj;
+				rbPush(m, p, m.n.x * dj, m.n.y * dj);
+			}
+		}
+	}
+	for (let m of ms) {
+		for (let p of m.pts) {
+			let rv = rbRel(m, p);
+			p.d -= (rv[0] * m.n.x + rv[1] * m.n.y) * dt;
+		}
+	}
+}
+
+function rbSub(bs, dt) {
+	let ms = [];
+	for (let b of bs) {
+		b.dx = 0;
+		b.dy = 0;
+	}
+	for (let b of bs) {
+		if (!b.sl) rbTiles(b, ms);
+	}
+	for (let u = 0; u < bs.length; u++) {
+		for (let v = u + 1; v < bs.length; v++) {
+			let a = bs[u];
+			let b = bs[v];
+			if (a.sl && b.sl) continue;
+			if (Math.abs(a.x - b.x) > a.hw + a.hh + b.hw + b.hh || Math.abs(a.y - b.y) > a.hw + a.hh + b.hw + b.hh) continue;
+			let pa = rbPoly(a);
+			let pb = rbPoly(b);
+			let m = rbMan(pa, pb, rbNorms(pa), rbNorms(pb), null, null);
+			if (m) {
+				m.a = a;
+				m.b = b;
+				ms.push(m);
+			}
+		}
+	}
+	rbSolve(ms, dt);
+	for (let b of bs) {
+		if (b.sl) continue;
+		b.x += b.vx * dt;
+		b.y += b.vy * dt;
+		b.a += b.av * dt;
+	}
+	for (let it = 0; it < 3; it++) {
+		for (let m of ms) {
+			let ia = m.a ? m.a.im : 0;
+			let ib = m.b ? m.b.im : 0;
+			if (ia + ib == 0) continue;
+			let sh = ((m.b ? m.b.dx : 0) - (m.a ? m.a.dx : 0)) * m.n.x + ((m.b ? m.b.dy : 0) - (m.a ? m.a.dy : 0)) * m.n.y;
+			let dm = -1e9;
+			for (let p of m.pts) dm = Math.max(dm, p.d - sh);
+			if (dm <= -0.01) continue;
+			let c = Math.min(dm + 0.02, 4);
+			if (m.a) {
+				let f = c * ia / (ia + ib);
+				m.a.x -= m.n.x * f;
+				m.a.y -= m.n.y * f;
+				m.a.dx -= m.n.x * f;
+				m.a.dy -= m.n.y * f;
+			}
+			if (m.b) {
+				let f = c * ib / (ia + ib);
+				m.b.x += m.n.x * f;
+				m.b.y += m.n.y * f;
+				m.b.dx += m.n.x * f;
+				m.b.dy += m.n.y * f;
+			}
+		}
+	}
+	for (let m of ms) {
+		let near = false;
+		for (let p of m.pts) {
+			if (p.d > -0.04) near = true;
+		}
+		if (!near) continue;
+		if (m.n.y > 0.5 && m.a) m.a.sup = true;
+		if (m.n.y < -0.5 && m.b) m.b.sup = true;
+		if (m.hit) {
+			m.a.vy = -jumpPower * 1.66;
+			m.a.y -= 10;
+			m.a.sup = false;
+			m.hit = false;
+			if (tileFrames[m.ty] && tileFrames[m.ty][m.tx]) {
+				tileFrames[m.ty][m.tx].playing = true;
+				tileFrames[m.ty][m.tx].cf = 1;
+			}
+		}
+	}
+}
+
+function rbSim() {
+	let bs = [];
+	for (let i = 0; i < charCount; i++) {
+		if (!rbOK(i)) continue;
+		if (!rbOn(i)) {
+			rbHold(i);
+			continue;
+		}
+		let c = char[i];
+		let d = charD[c.id];
+		let m = c.weight > 0 ? c.weight : 0.2;
+		let b = {i: i, c: c, x: c.x, y: c.y - c.h / 2, a: c.ang, hw: d[0], hh: d[1] / 2, sup: false, sl: false, dx: 0, dy: 0};
+		b.im = 1 / m;
+		b.ii = 3 / (m * (b.hw * b.hw + b.hh * b.hh));
+		if (c.slp >= 30) {
+			if ((_frameCount + i) % 8 == 0) c.slp = 24;
+			else b.sl = true;
+		}
+		if (b.sl) {
+			b.vx = 0;
+			b.vy = 0;
+			b.av = 0;
+			b.im = 0;
+			b.ii = 0;
+		} else {
+			c.onob = false;
+			c.applyForces(c.weight2, false, jumpPower * 0.7);
+			b.vx = c.vx;
+			b.vy = c.vy;
+			b.av = c.av;
+		}
+		bs.push(b);
+	}
+	if (bs.length == 0) return;
+	let mv = 0;
+	for (let b of bs) {
+		if (!b.sl) mv = Math.max(mv, Math.abs(b.vx), Math.abs(b.vy));
+	}
+	let n = Math.min(4, Math.max(1, Math.ceil(mv / 6)));
+	rbM = mv / n + 1;
+	for (let s = 0; s < n; s++) rbSub(bs, 1 / n);
+	for (let b of bs) {
+		let c = b.c;
+		if (b.sl) {
+			c.onob = true;
+			continue;
+		}
+		b.av = Math.max(-0.5, Math.min(0.5, b.av * 0.99));
+		if (b.sup && Math.abs(b.vy) < 0.1) b.vy = 0;
+		let py = c.y;
+		c.vx = b.vx;
+		c.vy = b.vy;
+		c.av = b.av;
+		c.ang = rbAng(b.a);
+		rbFit(c, b.x, b.y);
+		if (c.vx != 0 || c.vy != 0 || c.av != 0 || py != c.y) c.justChanged = 2;
+		let was = c.onob;
+		c.onob = b.sup;
+		if (was && !b.sup) aboveFallOff(b.i);
+		if (!was && b.sup) checkButton(b.i);
+		let calm = Math.abs(b.vx) < 0.08 && Math.abs(b.vy) < 0.15 && Math.abs(b.av) < 0.006 && b.sup && c.submerged == 0;
+		c.slp = calm ? c.slp + 1 : 0;
+		if (c.slp >= 30) {
+			let q = Math.PI / 2;
+			let sn = Math.round(c.ang / q) * q;
+			if (Math.abs(c.ang - sn) < 0.02) {
+				c.ang = rbAng(sn);
+				let by = c.y;
+				rbFit(c, c.x, 0);
+				c.y = by;
+			}
+			c.vx = 0;
+			c.vy = 0;
+			c.av = 0;
+		}
+	}
+}
+
 function bounce(i) {
 	if (ifCarried(i)) {
 		bounce(char[i].carriedBy);
@@ -4890,7 +5338,7 @@ function landOnObject(i) {
 	let record = 10000;
 	let k = 0;
 	for (let j = 0; j < charCount; j++) {
-		if (!ifCarried(j) && (char[j].charState == 6 || char[j].charState == 4)) {
+		if (!ifCarried(j) && (char[j].charState == 6 || char[j].charState == 4) && !(rbOK(i) && rbOK(j))) {
 			let dist = Math.abs(char[i].x - char[j].x);
 			if (
 				dist < char[i].w + char[j].w &&
@@ -4923,7 +5371,7 @@ function landOnObject(i) {
 
 function objectsLandOn(i) {
 	for (let j = 0; j < charCount; j++) {
-		if (char[j].charState >= 5 && char[j].standingOn != i) {
+		if (char[j].charState >= 5 && char[j].standingOn != i && !(rbOK(i) && rbOK(j))) {
 			let dist = Math.abs(char[i].x - char[j].x);
 			if (
 				dist < char[i].w + char[j].w &&
@@ -7916,6 +8364,7 @@ function draw() {
 				// if (cutScene == 1) csBubble.gotoAndPlay(17);
 			}
 			locations[4] = 1000;
+			rbSim();
 			for (let i = 0; i < charCount; i++) {
 				if (char[i].charState >= 5) {
 					char[i].landTimer = char[i].landTimer + 1;
@@ -7930,8 +8379,10 @@ function draw() {
 						}
 					} else char[i].fricGoal = char[char[i].standingOn].vx;
 
-					char[i].applyForces(char[i].weight2, control == i, jumpPower * 0.7);
-					if (char[i].deathTimer >= 30) char[i].charMove();
+					if (!rbOn(i)) {
+						char[i].applyForces(char[i].weight2, control == i, jumpPower * 0.7);
+						if (char[i].deathTimer >= 30) char[i].charMove();
+					}
 					if (char[i].id == 3) {
 						if (char[i].temp > 50) {
 							for (let j = 0; j < charCount; j++) {
@@ -8124,6 +8575,10 @@ function draw() {
 							stopY = -1;
 						}
 					}
+					if (rbOn(i)) {
+						stopX = 0;
+						stopY = 0;
+					}
 					if (stopX != 0 && stopY != 0) {
 						// two coordinates changed at once! Make sure snags don't happen
 						if (stopY == 1) {
@@ -8251,7 +8706,7 @@ function draw() {
 						if (Math.abs(char[i].x - char[j].x) >= char[i].w + char[j].w || ifCarried(j)) {
 							fallOff(i);
 						}
-					} else if (char[i].onob) {
+					} else if (char[i].onob && !rbOn(i)) {
 						if (!ifCarried(i) && char[i].standingOn == -1) {
 							char[i].y = Math.round(char[i].y / 30) * 30;
 						}
@@ -10985,6 +11440,9 @@ class Character {
 		this.expr = 0;
 		this.dExpr = tdExpr;
 		this.acidDropTimer = [0, 0]; // Why am I doing it like this
+		this.ang = 0;
+		this.av = 0;
+		this.slp = 0;
 	}
 
 	applyForces(grav, control, waterUpMaxSpeed) {
