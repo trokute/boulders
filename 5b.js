@@ -641,7 +641,11 @@ const blockProperties = [
 	[false,false,false,false,false,false,false,false,false,true,true,0,0,false,false,false,1,false],
 	[false,true,false,false,false,false,false,false,true,false,false,0,2,false,false,true,1,false],
 	[false,false,false,false,false,false,false,false,true,false,false,0,2,false,false,true,1,false],
+	[true,true,true,true,false,false,false,false,true,false,false,0,0,false,false,true,14,false,[0,1,2,3,4,5,6,7,8,9,10,11,12,13]],
+	[true,true,true,true,false,false,false,false,true,false,false,0,0,false,false,true,14,false,[0,1,2,3,4,5,6,7,8,9,10,11,12,13]],
+	[true,true,true,true,false,false,false,false,true,false,false,0,0,false,false,true,14,false,[0,1,2,3,4,5,6,7,8,9,10,11,12,13]],
 ];
+const trampDirs = {13: [0, -1], 135: [0, 1], 136: [1, 0], 137: [-1, 0]};
 const switches = [[31,33,32,34,79,78,81,82],[51,53,52,54,133,134],[65,61,60,62,63,64],[],[],[14,16,83,85]];
 
 // [0] - hitbox width
@@ -1949,7 +1953,7 @@ let diaInfoHeight = 20;
 const charStateNames = ['', 'Dead', 'Being Recovered', 'Deadly & Moving', 'Moving', 'Deadly', 'Carryable', '', 'Non-Playable Character', 'Rescuable', 'Playable Character'];
 const charStateNamesShort = ['', 'D', 'BR', 'D&M', 'M', 'D', 'C', '', 'NPC', 'R', 'P'];
 const toolNames = ['Draw Tool', 'Eraser Tool', 'Fill Rectangle Tool', 'Fill Tool', 'Eyedropper Tool', 'Selection Tool', 'Row Tool', 'Column Tool', '', 'Copy', 'Undo / Redo', 'Clear'];
-const tileNames = ['Air','Red Ground Block','Downward Facing Gray Spikes','Upward Facing Gray Spikes','Right Facing Gray Spikes','Left Facing Gray Spikes','End Gate','"E" Tree','Dialogue Starter','Red Background Block','Green Ground Block','Green Background Block','Win Token','Spring Block','Left Conveyer','Heater','Right Conveyer','Gray Spike Ball','Upward One-Way Platform','Downward Facing Black Spikes','Upward Facing Black Spikes','Right Facing Black Spikes','Left Facing Black Spikes','Downward Facing Black Spikes with Support Cable','Vertical Support Cable','Vertical Support Cable Connected Right','Horizontal Support Cable','Top Left Support Cable Connector','Horizontal Support Cable Connected Down','Horizontal Support Cable Connected Up','Vertical Support Cable Connected Left','Yellow Switch Block Solid','Dark Yellow Switch Block Solid','Yellow Switch Block Passable','Dark Yellow Switch Block Passable','Yellow Lever Facing Left','Yellow Lever Facing Right','Blue Lever Facing Left','Blue Lever Facing Right','Green Background Block with Upward One-Way Platform','Yellow Button','Blue Button','Gray Grass','Gray Dirt','Right Facing One-Way Platform','Two-Way Gray Spikes Top Left','Two-Way Gray Spikes Top Right','Crumbling Rock','Conglomerate-Like Background Block','Lamp','Gray Gems','Blue Switch Block Solid','Dark Blue Switch Block Solid','Blue Switch Block Passable','Dark Blue Switch Block Passable','Conglomerate-Like Background Block with Upward One-Way Platform','Gray Block','Green Lever Facing Left','Green Lever Facing Right','"V" Tree','Dark Green Switch Block Solid','Green Switch Block Passable','Dark Green Switch Block Passable','Green Switch Platform Up Solid','Green Switch Platform Up Passable','Green Switch Block Solid','Spotlight','Black Block','Left Facing One-Way Platform','Downward One-Way Platform','Green Background Block with Left Facing One-Way Platform','Green Button','Black Spike Ball','Purple Ground Block','"Wind Gust" Block','Vertical Electric Barrier','Horiontal Electric Barrier','Purple Background Block','Yellow Switch Spike Ball Passable','Yellow Switch Spike Ball Solid','"I" Tree','Yellow Switch Platform Up Solid','Yellow Switch Platform Up Passable','One-Way Conveyer Left','One-Way Conveyer Left (not moving)','One-Way Conveyer Right','One-Way Conveyer Right (not moving)','Purple Background Block Slanted Bottom Left','Purple Background Block Slanted Bottom Right','Light Gray Vertical Support Cable','Light Gray Horizontal Support Cable','Light Gray Horizontal Support Cable Connected Down','Light Gray Horizontal Support Cable Connected Up','Wood Block','Wood Background Block','Danger Zone Background Block','Purple Background Block Slanted Top Right','Purple Background Block Slanted Top Left','Gray Metal Ground Block','Wooden Background Block... again?','Acid','Acid Glow','Yellow Metal Ground Block','Lava','Lava Glow','Red Metal Ground Block','Yellow Metal Background Block','Dark Gray Metal Ground Block','Conveyer Lever Facing Left','Conveyer Lever Facing Right','Picture','','','','','','','','','','','','','','','','','','','','Water','Brick Ground Block','Wall of Text','Blue Switch Platform Up Solid','Blue Switch Platform Up Passable'];
+const tileNames = ['Air','Red Ground Block','Downward Facing Gray Spikes','Upward Facing Gray Spikes','Right Facing Gray Spikes','Left Facing Gray Spikes','End Gate','"E" Tree','Dialogue Starter','Red Background Block','Green Ground Block','Green Background Block','Win Token','Spring Block','Left Conveyer','Heater','Right Conveyer','Gray Spike Ball','Upward One-Way Platform','Downward Facing Black Spikes','Upward Facing Black Spikes','Right Facing Black Spikes','Left Facing Black Spikes','Downward Facing Black Spikes with Support Cable','Vertical Support Cable','Vertical Support Cable Connected Right','Horizontal Support Cable','Top Left Support Cable Connector','Horizontal Support Cable Connected Down','Horizontal Support Cable Connected Up','Vertical Support Cable Connected Left','Yellow Switch Block Solid','Dark Yellow Switch Block Solid','Yellow Switch Block Passable','Dark Yellow Switch Block Passable','Yellow Lever Facing Left','Yellow Lever Facing Right','Blue Lever Facing Left','Blue Lever Facing Right','Green Background Block with Upward One-Way Platform','Yellow Button','Blue Button','Gray Grass','Gray Dirt','Right Facing One-Way Platform','Two-Way Gray Spikes Top Left','Two-Way Gray Spikes Top Right','Crumbling Rock','Conglomerate-Like Background Block','Lamp','Gray Gems','Blue Switch Block Solid','Dark Blue Switch Block Solid','Blue Switch Block Passable','Dark Blue Switch Block Passable','Conglomerate-Like Background Block with Upward One-Way Platform','Gray Block','Green Lever Facing Left','Green Lever Facing Right','"V" Tree','Dark Green Switch Block Solid','Green Switch Block Passable','Dark Green Switch Block Passable','Green Switch Platform Up Solid','Green Switch Platform Up Passable','Green Switch Block Solid','Spotlight','Black Block','Left Facing One-Way Platform','Downward One-Way Platform','Green Background Block with Left Facing One-Way Platform','Green Button','Black Spike Ball','Purple Ground Block','"Wind Gust" Block','Vertical Electric Barrier','Horiontal Electric Barrier','Purple Background Block','Yellow Switch Spike Ball Passable','Yellow Switch Spike Ball Solid','"I" Tree','Yellow Switch Platform Up Solid','Yellow Switch Platform Up Passable','One-Way Conveyer Left','One-Way Conveyer Left (not moving)','One-Way Conveyer Right','One-Way Conveyer Right (not moving)','Purple Background Block Slanted Bottom Left','Purple Background Block Slanted Bottom Right','Light Gray Vertical Support Cable','Light Gray Horizontal Support Cable','Light Gray Horizontal Support Cable Connected Down','Light Gray Horizontal Support Cable Connected Up','Wood Block','Wood Background Block','Danger Zone Background Block','Purple Background Block Slanted Top Right','Purple Background Block Slanted Top Left','Gray Metal Ground Block','Wooden Background Block... again?','Acid','Acid Glow','Yellow Metal Ground Block','Lava','Lava Glow','Red Metal Ground Block','Yellow Metal Background Block','Dark Gray Metal Ground Block','Conveyer Lever Facing Left','Conveyer Lever Facing Right','Picture','','','','','','','','','','','','','','','','','','','','Water','Brick Ground Block','Wall of Text','Blue Switch Platform Up Solid','Blue Switch Platform Up Passable','Downward Spring Block','Right Facing Spring Block','Left Facing Spring Block'];
 let charDropdown = -1;
 let charDropdownMS = -1;
 let charDropdownType;
@@ -1983,6 +1987,11 @@ const exploreTabWidths = [125, 200, 125];
 let power = 1;
 let jumpPower = 11;
 let qPress = false;
+let ropeMode = false;
+let ropes = [];
+let ropeSel = -1;
+let spacePress = false;
+let wPress = false;
 let upPress = false;
 let csPress = false;
 let downPress = false;
@@ -2269,6 +2278,11 @@ async function loadingScreen() {
 		imgBgs[i] = await createImage(resourceData['bg/bg' + i.toString().padStart(4, '0') + '.png']);
 	}
 	for (let i = 0; i < blockProperties.length; i++) {
+		if (i > 134) {
+			svgTiles[i] = svgTiles[13];
+			svgTilesVB[i] = svgTilesVB[13];
+			continue;
+		}
 		let id = i.toString().padStart(4, '0');
 		if (blockProperties[i][16] == 1 || (blockProperties[i][15] && blockProperties[i][16] == 0)) {
 			svgTiles[i] = await createImage(resourceData['blocks/b' + id + '.svg']);
@@ -3187,6 +3201,8 @@ function playLevel(i) {
 }
 
 function resetLevel() {
+	ropes = [];
+	ropeSel = -1;
 	HPRCBubbleFrame = 0;
 	tileDepths = [[], [], [], []];
 	if (playMode == 2) {
@@ -3465,6 +3481,7 @@ function drawLevel(context) {
 	}
 	// We draw the characters in here so we can layer liquids above them.
 	drawCharacters(context);
+	drawRopes(context);
 	// Draw Liquids
 	for (let j = 0; j < tileDepths[3].length; j++) {
 		addTileMovieClip(tileDepths[3][j].x, tileDepths[3][j].y, context);
@@ -3573,7 +3590,12 @@ function drawCharacters(context) {
 				let model = charModels[char[i].id];
 
 				// If we're not bubble dying, draw the legs.
-				if (!(char[i].id == 5 && Math.floor(char[i].frame / 2) == 4)) {
+				if (char[i].rag) {
+					for (let z = 0; z < 2; z++) {
+						let l = char[i].limbs[z];
+						drawLimb(context, char[i].x + l.ox, char[i].y + l.oy, l.a - char[i].ang, l, svgBodyParts[legFrames[1].bodypart], char[i].temp);
+					}
+				} else if (!(char[i].id == 5 && Math.floor(char[i].frame / 2) == 4)) {
 					// TODO: remove hard-coded numbers
 					// TODO: make the character's leg frames an array and loop through them here...
 					// ... or just make them one variable instead of two. whichever one I feel like doing at the time ig.
@@ -3655,6 +3677,7 @@ function drawCharacters(context) {
 					char[i].x + charModels[char[i].id].torsomat.tx,
 					char[i].y + charModels[char[i].id].torsomat.ty
 				);
+				let ai = 2;
 				for (let j = 0; j < modelFrame.length; j++) {
 					if (char[i].frame > 9 && modelFrame[j].type == 'armroot') {
 						let handOff = modelFrame[j].id == 0 ? 10 : 20;
@@ -3679,6 +3702,11 @@ function drawCharacters(context) {
 						context.beginPath();
 						context.arc(handX, handY, 2.5, 0, 2 * Math.PI, false);
 						context.fill();
+						continue;
+					}
+					if (char[i].rag && modelFrame[j].type == 'anim' && char[i].limbs[ai]) {
+						let l = char[i].limbs[ai++];
+						drawLimb(context, (l.ox - model.torsomat.tx) / model.torsomat.a, (l.oy - model.torsomat.ty) / model.torsomat.d, l.a - char[i].ang, l, svgBodyParts[bodyPartAnimations[modelFrame[j].anim].bodypart], char[i].temp);
 						continue;
 					}
 					let img = svgBodyParts[modelFrame[j].bodypart];
@@ -3726,7 +3754,7 @@ function drawCharacters(context) {
 					context.restore();
 				}
 				context.restore();
-				char[i].poseTimer++;
+				if (!char[i].rag) char[i].poseTimer++;
 
 				// Hitboxes
 				// ctx.strokeStyle = HSVtoRGB((char[i].id*1.618033988749894)%1, 0.7, 0.8);
@@ -4032,6 +4060,16 @@ function getTileDepths() {
 		}
 	}
 }
+function tileRotate(context, cx, cy, t) {
+	let d = trampDirs[t];
+	if (!d || t == 13) return false;
+	context.save();
+	context.translate(cx, cy);
+	context.rotate(Math.atan2(d[0], -d[1]));
+	context.translate(-cx, -cy);
+	return true;
+}
+
 // draws a tile
 // TODO: precalculate a this stuff and only do the drawing in here. Unless it's actually all necessary. Then you can just leave it.
 function addTileMovieClip(x, y, context) {
@@ -4066,8 +4104,10 @@ function addTileMovieClip(x, y, context) {
 			}
 			// context.fillStyle = '#00ffcc';
 			// context.fillRect(x*30, y*30, 30, 30);
-			if (boundingBoxCheck(cameraX, cameraY, 960, 540, x * 30 + svgTilesVB[t][frame][0], y * 30 + svgTilesVB[t][frame][1], svgTilesVB[t][frame][2], svgTilesVB[t][frame][3])) {
+			if (boundingBoxCheck(cameraX - 30, cameraY - 30, 1020, 600, x * 30 + svgTilesVB[t][frame][0], y * 30 + svgTilesVB[t][frame][1], svgTilesVB[t][frame][2], svgTilesVB[t][frame][3])) {
+				let rt = tileRotate(context, x * 30 + 15, y * 30 + 15, t);
 				context.drawImage(svgTiles[t][frame], x * 30 + svgTilesVB[t][frame][0], y * 30 + svgTilesVB[t][frame][1], svgTiles[t][frame].width / scaleFactor, svgTiles[t][frame].height / scaleFactor);
+				if (rt) context.restore();
 			}
 			// context.drawImage(svgTiles[t][0], x*30, y*30);
 		}
@@ -4599,11 +4639,15 @@ function verticalType(i, sign, prop, pist) {
 	return toReturn;
 }
 
-function horizontalType(i, sign, prop) {
+function horizontalType(i, sign, prop, pist) {
 	let xTile = Math.floor((char[i].x + char[i].w * sign) / 30);
 	for (let j = Math.floor((char[i].y - char[i].h) / 30); j <= Math.floor((char[i].y - 0.01) / 30); j++) {
 		if (!outOfRange(xTile, j)) {
 			if (thisLevel[j][xTile] == prop) {
+				if (pist) {
+					tileFrames[j][xTile].playing = true;
+					tileFrames[j][xTile].cf = 1;
+				}
 				return true;
 			}
 		}
@@ -4612,6 +4656,8 @@ function horizontalType(i, sign, prop) {
 }
 
 function land(i, y, vy) {
+	let hard = char[i].charState >= 7 && char[i].deathTimer >= 30 && !char[i].rag && y - char[i].fy > 300;
+	let dist = y - char[i].fy;
 	char[i].y = y;
 	if (char[i].weight2 <= 0) {
 		char[i].vy = -Math.abs(vy);
@@ -4619,6 +4665,7 @@ function land(i, y, vy) {
 		char[i].vy = vy;
 		char[i].onob = true;
 	}
+	if (hard) hardLand(i, dist);
 }
 
 function land2(i, y) {
@@ -4736,6 +4783,7 @@ function startDeath(i) {
 			putDown(char[i].carriedBy);
 		}
 		char[i].pcharState = char[i].charState;
+		if (char[i].rag) ragEnd(i);
 		checkButton2(i, true);
 		fallOff(i);
 		char[i].deathTimer = 20;
@@ -4746,6 +4794,142 @@ function startDeath(i) {
 
 		char[i].frame = 7 + Math.ceil(char[i].dire / 2);
 	}
+}
+
+function ragHit(x, y) {
+	return allSolid(rbTile(Math.floor(x / 30), Math.floor(y / 30)));
+}
+
+function ragBlocked(c) {
+	for (let y = Math.floor((c.y - c.h) / 30); y <= Math.floor((c.y - 0.01) / 30); y++) {
+		for (let x = Math.floor((c.x - c.w) / 30); x <= Math.floor((c.x + c.w - 0.01) / 30); x++) {
+			if (allSolid(rbTile(x, y))) return true;
+		}
+	}
+	return false;
+}
+
+function ragJoint(c, l) {
+	let ry = l.oy + charD[c.id][1] / 2;
+	let s = Math.sin(c.ang);
+	let k = Math.cos(c.ang);
+	return {x: c.x + l.ox * k - ry * s, y: c.y - c.h / 2 + l.ox * s + ry * k};
+}
+
+function hardLand(i, dist) {
+	let c = char[i];
+	if (c.id == 5) {
+		startDeath(i);
+		return;
+	}
+	if (c.carry) putDown(i);
+	let m = charModels[c.id];
+	let p = Math.min((dist - 300) / 900, 1);
+	let dr = c.vx != 0 ? Math.sign(c.vx) : c.dire > 2 ? 1 : -1;
+	c.vx = c.vx * 1.5 + dr * (1 + 8 * p) * (0.5 + Math.random());
+	c.vy = -(4 + 10 * p);
+	c.av = dr * (0.1 + 0.3 * p) * (0.5 + Math.random());
+	c.onob = false;
+	c.slp = 0;
+	c.rag = Infinity;
+	c.mash = 0;
+	c.mt = 0;
+	c.frame = Math.ceil(c.dire / 2) + 3;
+	c.leg1frame = 1;
+	c.leg2frame = 1;
+	c.leg1skew = 0;
+	c.leg2skew = 0;
+	let d = c.legdire > 0 ? 1 : -1;
+	c.limbs = [];
+	for (let z = 0; z < 2; z++) {
+		c.limbs.push({ox: m.legx[z] + (d > 0 ? -0.75 : 0.35), oy: m.legy[z] - 0.35, a: c.ang, w: 0, sx: d * 0.3648529052734375, sy: 0.3814697265625});
+	}
+	for (let q of m.frames[c.frame]) {
+		if (q.type != 'anim') continue;
+		let an = bodyPartAnimations[q.anim].frames;
+		let f = an[q.loop ? (c.poseTimer + q.offset) % an.length : Math.min(c.poseTimer + q.offset, an.length - 1)];
+		let a = q.mat.a * f.a + q.mat.c * f.b;
+		let b = q.mat.b * f.a + q.mat.d * f.b;
+		let e = q.mat.a * f.c + q.mat.c * f.d;
+		let g = q.mat.b * f.c + q.mat.d * f.d;
+		let sy = Math.sqrt(e * e + g * g);
+		c.limbs.push({
+			ox: m.torsomat.a * q.mat.tx + m.torsomat.tx,
+			oy: m.torsomat.d * q.mat.ty + m.torsomat.ty,
+			a: c.ang + Math.atan2(-e, g),
+			w: (Math.random() - 0.5) * 0.4,
+			sx: (a * g - b * e) / sy,
+			sy: sy
+		});
+	}
+	for (let l of c.limbs) {
+		let j = ragJoint(c, l);
+		l.jx = j.x;
+		l.jy = j.y;
+		l.jvx = 0;
+		l.jvy = 0;
+	}
+}
+
+function ragEnd(i) {
+	let c = char[i];
+	let d = charD[c.id];
+	let cy = c.y - c.h / 2;
+	c.rag = 0;
+	c.limbs = [];
+	c.ang = 0;
+	c.av = 0;
+	c.slp = 0;
+	c.w = d[0];
+	c.h = d[1];
+	c.y = cy + d[1] / 2;
+	for (let n = 0; n < 90 && ragBlocked(c); n++) c.y--;
+	c.vx = 0;
+	c.vy = 0;
+	c.onob = false;
+	c.fy = c.y;
+	c.justChanged = 2;
+}
+
+function ragStep(i) {
+	let c = char[i];
+	c.rag--;
+	if (c.mt > 0) c.mt--;
+	else c.mash = 0;
+	if (c.rag <= 0) {
+		ragEnd(i);
+		return;
+	}
+	for (let l of c.limbs) {
+		let j = ragJoint(c, l);
+		let vx = j.x - l.jx;
+		let vy = j.y - l.jy;
+		let ax = vx - l.jvx;
+		let ay = vy - l.jvy;
+		l.jx = j.x;
+		l.jy = j.y;
+		l.jvx = vx;
+		l.jvy = vy;
+		let s = Math.sin(l.a);
+		let k = Math.cos(l.a);
+		l.w = Math.max(-0.4, Math.min(0.4, (l.w - 0.065 * s + (ax * k + ay * s) * 0.05) * 0.96));
+		let a = l.a;
+		l.a = rbAng(a + l.w);
+		if (ragHit(j.x - Math.sin(l.a) * 10, j.y + Math.cos(l.a) * 10)) {
+			l.a = a;
+			l.w *= -0.5;
+		}
+	}
+	c.justChanged = 2;
+}
+
+function drawLimb(context, x, y, a, l, img, temp) {
+	context.save();
+	context.translate(x, y);
+	context.rotate(a);
+	context.transform(l.sx, 0, 0, l.sy, 0, 0);
+	drawPossiblyTintedImage(img, -img.width / (scaleFactor * 2), -img.height / (scaleFactor * 2), temp, context, true);
+	context.restore();
 }
 
 function endDeath(i) {
@@ -4769,7 +4953,7 @@ const rbTN = [{x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0}];
 const rbCorner = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
 
 function rbOK(i) {
-	return char[i].charState == 6 && char[i].id != 35 && char[i].id != 36 && !ifCarried(i);
+	return (char[i].charState == 6 || char[i].rag) && char[i].id != 35 && char[i].id != 36 && !ifCarried(i);
 }
 
 function rbOn(i) {
@@ -4797,11 +4981,88 @@ function rbFit(c, cx, cy) {
 	c.y = cy + ey;
 }
 
+function rbGrounded(c) {
+	let ty = Math.floor((c.y + 2) / 30);
+	let x0 = Math.floor((c.x - c.w + 2) / 30);
+	let x1 = Math.floor((c.x + c.w - 2) / 30);
+	for (let tx = x0; tx <= x1; tx++) {
+		if (allSolid(rbTile(tx, ty))) return true;
+	}
+	return false;
+}
+
+function icyColTop(tx, ty0) {
+	let ty = ty0;
+	if (allSolid(rbTile(tx, ty))) {
+		while (ty > 0 && allSolid(rbTile(tx, ty - 1))) ty--;
+		return ty;
+	}
+	for (ty = ty0 + 1; ty < ty0 + 8; ty++) {
+		if (allSolid(rbTile(tx, ty))) return ty;
+	}
+	return -1;
+}
+
+function icyNode(k, ty0) {
+	let a = icyColTop(k - 1, ty0);
+	let b = icyColTop(k, ty0);
+	if (a < 0 || b < 0) return -1;
+	return Math.min(a, b);
+}
+
+function icyHeight(x, ty0) {
+	let k = Math.floor(x / 30);
+	let a = icyNode(k, ty0);
+	let b = icyNode(k + 1, ty0);
+	if (a < 0 || b < 0 || Math.abs(b - a) > 1) return -1;
+	return (a + (b - a) * (x / 30 - k)) * 30;
+}
+
+function icyRampCheck(c) {
+	let ty0 = Math.floor((c.y - 12) / 30);
+	let y0 = icyHeight(c.x - c.w, ty0);
+	let y1 = icyHeight(c.x, ty0);
+	let y2 = icyHeight(c.x + c.w, ty0);
+	if (y0 < 0 || y1 < 0 || y2 < 0) return null;
+	if (c.y < y1 - 30 || c.y > y1 + 20) return null;
+	let m = (y2 - y0) / (2 * c.w);
+	if (Math.abs(m) < 0.05 && Math.abs(c.vx) < 0.5) return null;
+	return {m: m, target: y1};
+}
+
+function icySlide(c) {
+	let r = icyRampCheck(c);
+	if (!r) {
+		c.icyOn = false;
+		return;
+	}
+	let sx = 1 / Math.sqrt(1 + r.m * r.m);
+	let sy = r.m * sx;
+	let along = c.vx * sx + c.vy * sy;
+	if (c.icyOn && Math.abs(along - c.icyV) < 4 + Math.abs(c.icyV) * 0.6) along = c.icyV + Math.sqrt(Math.max(c.weight2, 0)) * sy;
+	along += 0.57 * sy;
+	if (Math.abs(r.m) < 0.05) along *= 0.995;
+	along = Math.max(-24, Math.min(24, along));
+	c.icyOn = true;
+	c.icyV = along;
+	c.vx = sx * along;
+	c.vy = sy * along;
+	c.y += (r.target - c.y) * 0.4;
+}
+
 function rbHold(i) {
 	let c = char[i];
 	let d = charD[c.id];
-	c.av = 0;
 	c.slp = 0;
+	if (c.rag) {
+		let y = c.y;
+		c.ang = rbAng(c.ang + c.av);
+		c.av *= 0.995;
+		rbFit(c, c.x, 0);
+		c.y = y;
+		return;
+	}
+	c.av = 0;
 	if (ifCarried(i)) {
 		c.ang = Math.abs(c.ang) < 0.02 ? 0 : c.ang * 0.6;
 		c.w = d[0];
@@ -4992,6 +5253,8 @@ function rbSolve(ms, dt) {
 		let ib = b ? b.im : 0;
 		let iia = a ? a.ii : 0;
 		let iib = b ? b.ii : 0;
+		let e = Math.max(a ? a.e : 0, b ? b.e : 0);
+		m.icy = (a && a.c && a.c.id == 2 && a.c.rag) || (b && b.c && b.c.id == 2 && b.c.rag);
 		let tx = -m.n.y;
 		let ty = m.n.x;
 		for (let p of m.pts) {
@@ -5009,7 +5272,7 @@ function rbSolve(ms, dt) {
 			p.jt = 0;
 			let rv = rbRel(m, p);
 			let vn = rv[0] * m.n.x + rv[1] * m.n.y;
-			p.bias = p.d < 0 ? p.d / dt : (vn < -2.5 ? -0.12 * vn : 0);
+			p.bias = p.d < 0 ? p.d / dt : (vn < -2.5 ? -e * vn : 0);
 			let reach = -p.d <= -vn * dt;
 			if (m.t == 13 && m.n.y > 0.5 && vn < -1 && reach && !b) m.hit = true;
 			if (b && a && vn < -0.3 && reach) {
@@ -5025,7 +5288,7 @@ function rbSolve(ms, dt) {
 			for (let p of m.pts) {
 				let rv = rbRel(m, p);
 				let dj = -(rv[0] * tx + rv[1] * ty) / p.kt;
-				let lim = 0.6 * p.jn;
+				let lim = (m.icy ? 0.03 : 0.6) * p.jn;
 				let nj = Math.max(-lim, Math.min(lim, p.jt + dj));
 				dj = nj - p.jt;
 				p.jt = nj;
@@ -5056,7 +5319,7 @@ function rbSub(bs, dt) {
 		b.dy = 0;
 	}
 	for (let b of bs) {
-		if (!b.sl) rbTiles(b, ms);
+		if (!b.sl && !b.icy) rbTiles(b, ms);
 	}
 	for (let u = 0; u < bs.length; u++) {
 		for (let v = u + 1; v < bs.length; v++) {
@@ -5128,7 +5391,109 @@ function rbSub(bs, dt) {
 	}
 }
 
+function ropePick() {
+	let mx = _xmouse + cameraX;
+	let my = _ymouse + cameraY;
+	for (let i = charCount - 1; i >= 0; i--) {
+		let c = char[i];
+		if (!(c.charState == 6 || c.rag) || c.id == 35 || c.id == 36) continue;
+		if (Math.abs(mx - c.x) <= c.w && my <= c.y && my >= c.y - c.h) return i;
+	}
+	return -1;
+}
+
+function ropeInput() {
+	if (!ropeMode || !mouseIsDown || pmouseIsDown) return;
+	let i = ropePick();
+	if (i < 0) {
+		ropeSel = -1;
+		return;
+	}
+	if (ropeSel >= 0 && ropeSel != i) {
+		let a = char[ropeSel];
+		let d = Math.hypot(char[i].x - a.x, (char[i].y - char[i].h / 2) - (a.y - a.h / 2));
+		ropes.push({a: ropeSel, b: i, len: Math.max(d, 30)});
+	}
+	ropeSel = i;
+}
+
+function ropeSolve(bs) {
+	let bm = {};
+	for (let b of bs) bm[b.i] = b;
+	for (let it = 0; it < 6; it++) {
+		for (let r of ropes) {
+			let ca = char[r.a];
+			let cb = char[r.b];
+			if (!ca || !cb) continue;
+			let ba = bm[r.a];
+			let bb = bm[r.b];
+			let dx = cb.x - ca.x;
+			let dy = (cb.y - cb.h / 2) - (ca.y - ca.h / 2);
+			let d = Math.hypot(dx, dy);
+			if (d <= r.len) continue;
+			let nx = dx / d;
+			let ny = dy / d;
+			let ia = ba && !ba.sl ? ba.im : 0;
+			let ib = bb && !bb.sl ? bb.im : 0;
+			if (ia + ib == 0) continue;
+			let rv = ((bb ? bb.vx : cb.vx) - (ba ? ba.vx : ca.vx)) * nx + ((bb ? bb.vy : cb.vy) - (ba ? ba.vy : ca.vy)) * ny;
+			let j = (rv + (d - r.len) * 0.2) / (ia + ib);
+			if (j <= 0) continue;
+			if (ia > 0) {
+				ba.vx += nx * j * ia;
+				ba.vy += ny * j * ia;
+			}
+			if (ib > 0) {
+				bb.vx -= nx * j * ib;
+				bb.vy -= ny * j * ib;
+			}
+		}
+	}
+}
+
+function drawRopes(context) {
+	if (!ropeMode && ropes.length == 0) return;
+	context.save();
+	context.strokeStyle = '#505050';
+	context.lineWidth = 3;
+	context.lineCap = 'round';
+	for (let r of ropes) {
+		let a = char[r.a];
+		let b = char[r.b];
+		if (!a || !b) continue;
+		context.beginPath();
+		context.moveTo(a.x, a.y - a.h / 2);
+		context.lineTo(b.x, b.y - b.h / 2);
+		context.stroke();
+	}
+	if (ropeMode) {
+		if (ropeSel >= 0 && char[ropeSel]) {
+			let c = char[ropeSel];
+			context.strokeStyle = '#ffcc00';
+			context.strokeRect(c.x - c.w, c.y - c.h, c.w * 2, c.h);
+			context.beginPath();
+			context.moveTo(c.x, c.y - c.h / 2);
+			context.lineTo(_xmouse + cameraX, _ymouse + cameraY);
+			context.stroke();
+		}
+		context.fillStyle = '#000000';
+		context.font = '16px Helvetica';
+		context.textAlign = 'left';
+		context.textBaseline = 'top';
+		context.fillText('Rope', cameraX + 8, cameraY + 8);
+	}
+	context.restore();
+}
+
 function rbSim() {
+	for (let r of ropes) {
+		let a = char[r.a];
+		let b = char[r.b];
+		if (a && b && Math.hypot(b.x - a.x, (b.y - b.h / 2) - (a.y - a.h / 2)) > r.len + 1) {
+			a.slp = 0;
+			b.slp = 0;
+		}
+	}
 	let bs = [];
 	for (let i = 0; i < charCount; i++) {
 		if (!rbOK(i)) continue;
@@ -5139,11 +5504,12 @@ function rbSim() {
 		let c = char[i];
 		let d = charD[c.id];
 		let m = c.weight > 0 ? c.weight : 0.2;
-		let b = {i: i, c: c, x: c.x, y: c.y - c.h / 2, a: c.ang, hw: d[0], hh: d[1] / 2, sup: false, sl: false, dx: 0, dy: 0};
+		let b = {i: i, c: c, x: c.x, y: c.y - c.h / 2, a: c.ang, hw: d[0], hh: d[1] / 2, sup: false, sl: false, dx: 0, dy: 0, e: c.rag ? 0.5 : 0.12};
+		b.icy = c.id == 2 && c.rag && icyRampCheck(c) != null;
 		b.im = 1 / m;
 		b.ii = 3 / (m * (b.hw * b.hw + b.hh * b.hh));
 		if (c.slp >= 30) {
-			if ((_frameCount + i) % 8 == 0) c.slp = 24;
+			if ((_frameCount + i) % 8 == 0 && !rbGrounded(c)) c.slp = 0;
 			else b.sl = true;
 		}
 		if (b.sl) {
@@ -5154,6 +5520,14 @@ function rbSim() {
 			b.ii = 0;
 		} else {
 			c.onob = false;
+			let tq = 0;
+			for (let r of c.stoodOnBy) {
+				if (char[r].charState == 6) continue;
+				let off = char[r].x - c.x;
+				let w = char[r].weight2 > 0 ? char[r].weight2 : 0.2;
+				if (Math.abs(off) > 2) tq += off * w;
+			}
+			c.av = Math.max(-0.4, Math.min(0.4, c.av + tq * 0.0005));
 			c.applyForces(c.weight2, false, jumpPower * 0.7);
 			b.vx = c.vx;
 			b.vy = c.vy;
@@ -5162,6 +5536,7 @@ function rbSim() {
 		bs.push(b);
 	}
 	if (bs.length == 0) return;
+	ropeSolve(bs);
 	let mv = 0;
 	for (let b of bs) {
 		if (!b.sl) mv = Math.max(mv, Math.abs(b.vx), Math.abs(b.vy));
@@ -5183,6 +5558,7 @@ function rbSim() {
 		c.av = b.av;
 		c.ang = rbAng(b.a);
 		rbFit(c, b.x, b.y);
+		if (c.id == 2 && c.rag) icySlide(c);
 		if (c.vx != 0 || c.vy != 0 || c.av != 0 || py != c.y) c.justChanged = 2;
 		let was = c.onob;
 		c.onob = b.sup;
@@ -5216,6 +5592,55 @@ function bounce(i) {
 	char[i].jump(-jumpPower * 1.66);
 	char[i].onob = false;
 	char[i].y = Math.floor(char[i].y / 30) * 30 - 10;
+}
+
+function bounceDir(i, dx, dy) {
+	let c = char[i];
+	if (ifCarried(i)) bounceDir(c.carriedBy, dx, dy);
+	let sp = jumpPower * 1.66;
+	c.fricGoal = 0;
+	if (dx != 0) {
+		c.vx = dx * sp;
+		c.vy = -jumpPower * 0.6;
+	} else {
+		c.vy = dy * sp;
+		c.vx *= 0.5;
+	}
+	c.onob = false;
+	c.slp = 0;
+	c.tcd = 8;
+}
+
+function trampCheck() {
+	for (let i = 0; i < charCount; i++) {
+		let c = char[i];
+		if (c.charState < 5 || c.id == 35 || c.id == 36 || ifCarried(i)) continue;
+		if (c.tcd > 0) {
+			c.tcd--;
+			continue;
+		}
+		let x0 = Math.floor((c.x - c.w) / 30) - 1;
+		let x1 = Math.floor((c.x + c.w) / 30) + 1;
+		let y0 = Math.floor((c.y - c.h) / 30) - 1;
+		let y1 = Math.floor(c.y / 30) + 1;
+		for (let ty = y0; ty <= y1; ty++) {
+			for (let tx = x0; tx <= x1; tx++) {
+				if (outOfRange(tx, ty)) continue;
+				let t = thisLevel[ty][tx];
+				if (t < 135 || t > 137) continue;
+				let d = trampDirs[t];
+				let fx = (tx + d[0]) * 30;
+				let fy = (ty + d[1]) * 30;
+				if (c.x + c.w > fx && c.x - c.w < fx + 30 && c.y > fy && c.y - c.h < fy + 30) {
+					bounceDir(i, d[0], d[1]);
+					if (tileFrames[ty] && tileFrames[ty][tx]) {
+						tileFrames[ty][tx].playing = true;
+						tileFrames[ty][tx].cf = 1;
+					}
+				}
+			}
+		}
+	}
 }
 
 function bumpHead(i) {
@@ -5360,12 +5785,14 @@ function landOnObject(i) {
 		if (char[k].onob) land2(i, char[k].y - char[k].h);
 		char[i].standingOn = k;
 		char[k].stoodOnBy.push(i);
+		if (char[k].charState == 6 && char[i].charState != 6) char[k].av += (char[i].x - char[k].x) * Math.max(Math.abs(char[i].vy), 4) * 0.00003;
 		rippleWeight(i, char[i].weight2, 1);
 		char[i].fricGoal = char[k].fricGoal;
 		if (char[k].submerged == 1 && char[k].weight2 >= 0) {
 			char[k].submerged = 2;
 			char[k].weight2 -= 0.16;
 		}
+		if (char[i].rag && char[k].charState == 6) fallOff(i);
 	}
 }
 
@@ -5391,6 +5818,7 @@ function objectsLandOn(i) {
 				char[j].vy = char[i].vy;
 				rippleWeight(j, char[j].weight2, 1);
 				char[j].fricGoal = char[i].fricGoal;
+				if (char[j].rag && char[i].charState == 6) fallOff(j);
 			}
 		}
 	}
@@ -5754,6 +6182,7 @@ function drawLCTiles() {
 					blockProperties[tile][16] > 1
 						? svgTilesVB[tile][blockProperties[tile][17] ? _frameCount % blockProperties[tile][16] : 0]
 						: svgTilesVB[tile];
+				let rt = tileRotate(osctx5, tlx + (x + 0.5) * scale, tly + (y + 0.5) * scale, tile);
 				osctx5.drawImage(
 					img,
 					tlx + x * scale + (scale * vb[0]) / 30,
@@ -5761,6 +6190,7 @@ function drawLCTiles() {
 					(scale * vb[2]) / 30,
 					(scale * vb[3]) / 30
 				);
+				if (rt) osctx5.restore();
 			}
 			// else if (tile == 6) {
 			// 	ctx.fillStyle = selectedBg==9||selectedBg==10?'#999999':'#505050';
@@ -7980,6 +8410,10 @@ function mouseup(event) {
 
 function keydown(event) {
 	_keysDown[event.keyCode || event.charCode] = true;
+	if (event.keyCode == 81 && menuScreen == 3 && !editingTextBox) {
+		ropeMode = !ropeMode;
+		ropeSel = -1;
+	}
 
 	if (editingTextBox && event.key) {
 		if (currentTextBoxAllowsLineBreaks && event.key == 'v' && (event.metaKey || event.ctrlKey)) {
@@ -8234,7 +8668,11 @@ function draw() {
 					if (cutScene == 2) cutScene = 3;
 				}
 			} else {
-				if (control < 1000) {
+				if (control < 1000 && !char[control].rag) {
+					if (_keysDown[87]) {
+						if (!wPress) hardLand(control, 600);
+						wPress = true;
+					} else wPress = false;
 					if (recover) {
 						char[control].justChanged = 2;
 						if (recoverTimer == 0) {
@@ -8355,6 +8793,22 @@ function draw() {
 							fallOff(control);
 						}
 					} else char[control].landTimer = 80;
+				} else if (control < 1000) {
+					if (_keysDown[32]) {
+						if (!spacePress) {
+							char[control].mash++;
+							char[control].mt = 30;
+							if (char[control].mash >= 3) char[control].rag = Math.min(char[control].rag, 60);
+						}
+						spacePress = true;
+					} else spacePress = false;
+					if (_keysDown[90]) {
+						if (!qPress) {
+							changeControl();
+							qTimer = 6;
+						}
+						qPress = true;
+					} else qPress = false;
 				}
 			}
 
@@ -8364,8 +8818,11 @@ function draw() {
 				// if (cutScene == 1) csBubble.gotoAndPlay(17);
 			}
 			locations[4] = 1000;
+			ropeInput();
+			trampCheck();
 			rbSim();
 			for (let i = 0; i < charCount; i++) {
+				char[i].fy = char[i].charState < 5 || char[i].onob || char[i].submerged >= 1 || ifCarried(i) ? char[i].y : Math.min(char[i].fy, char[i].y);
 				if (char[i].charState >= 5) {
 					char[i].landTimer = char[i].landTimer + 1;
 					if (char[i].carry && char[char[i].carryObject].justChanged < char[i].justChanged) {
@@ -8731,6 +9188,7 @@ function draw() {
 						}
 						getCoin(i);
 					}
+					if (char[i].rag) ragStep(i);
 					if (char[i].deathTimer < 30) {
 						if (char[i].id == 5 && char[i].deathTimer >= 7) {
 							char[i].deathTimer = 6;
@@ -8742,6 +9200,7 @@ function draw() {
 					} else if (
 						char[i].charState >= 7 &&
 						char[i].id < 35 &&
+						!char[i].rag &&
 						(char[i].justChanged >= 1 || levelTimer == 0)
 					) {
 						setBody(i);
@@ -9388,6 +9847,7 @@ function draw() {
 							} else {
 								let img = blockProperties[i][16] > 1 ? svgTiles[i][blockProperties[i][17] ? _frameCount % blockProperties[i][16] : 0] : svgTiles[i];
 								let vb = blockProperties[i][16] > 1 ? svgTilesVB[i][blockProperties[i][17] ? _frameCount % blockProperties[i][16] : 0] : svgTilesVB[i];
+								let rt = tileRotate(ctx, 660 + (bdist - bs) + (j % bpr) * bdist + bs / 2, (selectedTab + 1) * tabHeight + (bdist - bs) + Math.floor(j / bpr) * bdist + bs / 2, i);
 								if (vb[2] <= 60) {
 									let sc = bs / 30;
 									let tlx = 660 + (bdist - bs) + (j % bpr) * bdist;
@@ -9407,6 +9867,7 @@ function draw() {
 									let sc = bs / vb[2];
 									ctx.drawImage(img, 660 + (bdist-bs) + (j%bpr)*bdist - (vb[2]*sc)/2 + bs/2, (selectedTab+1) * tabHeight + (bdist-bs) + Math.floor(j/bpr)*bdist - (vb[3]*sc)/2 + bs/2, vb[2]*sc, vb[3]*sc);
 								}
+								if (rt) ctx.restore();
 							}
 							j++;
 						}
@@ -11443,6 +11904,13 @@ class Character {
 		this.ang = 0;
 		this.av = 0;
 		this.slp = 0;
+		this.fy = ty;
+		this.rag = 0;
+		this.limbs = [];
+		this.mash = 0;
+		this.mt = 0;
+		this.pvx = 0;
+		this.pvy = 0;
 	}
 
 	applyForces(grav, control, waterUpMaxSpeed) {
