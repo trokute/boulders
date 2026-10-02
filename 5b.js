@@ -1950,8 +1950,8 @@ let selectedBg = 0;
 const tabNames = ['Level Info', 'Characters / Objects', 'Tiles', 'Background', 'Dialogue', 'Options'];
 let charInfoHeight = 40;
 let diaInfoHeight = 20;
-const charStateNames = ['', 'Dead', 'Being Recovered', 'Deadly & Moving', 'Moving', 'Deadly', 'Carryable', '', 'Non-Playable Character', 'Rescuable', 'Playable Character'];
-const charStateNamesShort = ['', 'D', 'BR', 'D&M', 'M', 'D', 'C', '', 'NPC', 'R', 'P'];
+const charStateNames = ['', 'Dead', 'Being Recovered', 'Deadly & Moving', 'Moving', 'Deadly', 'Carryable', '', 'Non-Playable Character', 'Rescuable', 'Playable Character', 'Rotation'];
+const charStateNamesShort = ['', 'D', 'BR', 'D&M', 'M', 'D', 'C', '', 'NPC', 'R', 'P', 'RO'];
 const toolNames = ['Draw Tool', 'Eraser Tool', 'Fill Rectangle Tool', 'Fill Tool', 'Eyedropper Tool', 'Selection Tool', 'Row Tool', 'Column Tool', '', 'Copy', 'Undo / Redo', 'Clear'];
 const tileNames = ['Air','Red Ground Block','Downward Facing Gray Spikes','Upward Facing Gray Spikes','Right Facing Gray Spikes','Left Facing Gray Spikes','End Gate','"E" Tree','Dialogue Starter','Red Background Block','Green Ground Block','Green Background Block','Win Token','Spring Block','Left Conveyer','Heater','Right Conveyer','Gray Spike Ball','Upward One-Way Platform','Downward Facing Black Spikes','Upward Facing Black Spikes','Right Facing Black Spikes','Left Facing Black Spikes','Downward Facing Black Spikes with Support Cable','Vertical Support Cable','Vertical Support Cable Connected Right','Horizontal Support Cable','Top Left Support Cable Connector','Horizontal Support Cable Connected Down','Horizontal Support Cable Connected Up','Vertical Support Cable Connected Left','Yellow Switch Block Solid','Dark Yellow Switch Block Solid','Yellow Switch Block Passable','Dark Yellow Switch Block Passable','Yellow Lever Facing Left','Yellow Lever Facing Right','Blue Lever Facing Left','Blue Lever Facing Right','Green Background Block with Upward One-Way Platform','Yellow Button','Blue Button','Gray Grass','Gray Dirt','Right Facing One-Way Platform','Two-Way Gray Spikes Top Left','Two-Way Gray Spikes Top Right','Crumbling Rock','Conglomerate-Like Background Block','Lamp','Gray Gems','Blue Switch Block Solid','Dark Blue Switch Block Solid','Blue Switch Block Passable','Dark Blue Switch Block Passable','Conglomerate-Like Background Block with Upward One-Way Platform','Gray Block','Green Lever Facing Left','Green Lever Facing Right','"V" Tree','Dark Green Switch Block Solid','Green Switch Block Passable','Dark Green Switch Block Passable','Green Switch Platform Up Solid','Green Switch Platform Up Passable','Green Switch Block Solid','Spotlight','Black Block','Left Facing One-Way Platform','Downward One-Way Platform','Green Background Block with Left Facing One-Way Platform','Green Button','Black Spike Ball','Purple Ground Block','"Wind Gust" Block','Vertical Electric Barrier','Horiontal Electric Barrier','Purple Background Block','Yellow Switch Spike Ball Passable','Yellow Switch Spike Ball Solid','"I" Tree','Yellow Switch Platform Up Solid','Yellow Switch Platform Up Passable','One-Way Conveyer Left','One-Way Conveyer Left (not moving)','One-Way Conveyer Right','One-Way Conveyer Right (not moving)','Purple Background Block Slanted Bottom Left','Purple Background Block Slanted Bottom Right','Light Gray Vertical Support Cable','Light Gray Horizontal Support Cable','Light Gray Horizontal Support Cable Connected Down','Light Gray Horizontal Support Cable Connected Up','Wood Block','Wood Background Block','Danger Zone Background Block','Purple Background Block Slanted Top Right','Purple Background Block Slanted Top Left','Gray Metal Ground Block','Wooden Background Block... again?','Acid','Acid Glow','Yellow Metal Ground Block','Lava','Lava Glow','Red Metal Ground Block','Yellow Metal Background Block','Dark Gray Metal Ground Block','Conveyer Lever Facing Left','Conveyer Lever Facing Right','Picture','','','','','','','','','','','','','','','','','','','','Water','Brick Ground Block','Wall of Text','Blue Switch Platform Up Solid','Blue Switch Platform Up Passable','Downward Spring Block','Right Facing Spring Block','Left Facing Spring Block'];
 let charDropdown = -1;
@@ -1988,8 +1988,14 @@ let power = 1;
 let jumpPower = 11;
 let qPress = false;
 let ropeMode = false;
+let ropeType = 0;
+let lcRope = false;
+let lcRopeSel = -1;
+let lcRopeTile = null;
+let rightClick = false;
 let ropes = [];
 let ropeSel = -1;
+let ropeTile = null;
 let spacePress = false;
 let wPress = false;
 let upPress = false;
@@ -2777,7 +2783,7 @@ function playGame() {
 
 function testLevelCreator() {
 	if (myLevelChars[1].length > 0) {
-		if (myLevelDialogue[1].length == 0) {
+		if (myLevelDialogue[1].filter(d => d.char != 98).length == 0) {
 			for (let i = 0; i < myLevel[1].length; i++) {
 				for (let j = 0; j < myLevel[1][i].length; j++) {
 					if (myLevel[1][i][j] == 8) myLevel[1][i][j] = 0;
@@ -3203,6 +3209,7 @@ function playLevel(i) {
 function resetLevel() {
 	ropes = [];
 	ropeSel = -1;
+	ropeTile = null;
 	HPRCBubbleFrame = 0;
 	tileDepths = [[], [], [], []];
 	if (playMode == 2) {
@@ -3257,10 +3264,12 @@ function resetLevel() {
 		cLevelDialogueFace = [];
 		cLevelDialogueText = [];
 		for (let i = 0; i < myLevelDialogue[1].length; i++) {
+			if (myLevelDialogue[1][i].char == 98) continue;
 			cLevelDialogueChar.push(myLevelDialogue[1][i].char);
 			cLevelDialogueFace.push(myLevelDialogue[1][i].face);
 			cLevelDialogueText.push(myLevelDialogue[1][i].text);
 		}
+		ropeLoad();
 
 		currentLevelDisplayName = myLevelInfo.name;
 	} else if (playMode == 3) {
@@ -3315,10 +3324,12 @@ function resetLevel() {
 		cLevelDialogueFace = [];
 		cLevelDialogueText = [];
 		for (let i = 0; i < myLevelDialogue[1].length; i++) {
+			if (myLevelDialogue[1][i].char == 98) continue;
 			cLevelDialogueChar.push(myLevelDialogue[1][i].char);
 			cLevelDialogueFace.push(myLevelDialogue[1][i].face);
 			cLevelDialogueText.push(myLevelDialogue[1][i].text);
 		}
+		ropeLoad();
 
 		currentLevelDisplayName = myLevelInfo.name;
 	} else {
@@ -5319,7 +5330,7 @@ function rbSub(bs, dt) {
 		b.dy = 0;
 	}
 	for (let b of bs) {
-		if (!b.sl && !b.icy) rbTiles(b, ms);
+		if (!b.sl && !b.icy && !b.pin) rbTiles(b, ms);
 	}
 	for (let u = 0; u < bs.length; u++) {
 		for (let v = u + 1; v < bs.length; v++) {
@@ -5396,25 +5407,108 @@ function ropePick() {
 	let my = _ymouse + cameraY;
 	for (let i = charCount - 1; i >= 0; i--) {
 		let c = char[i];
-		if (!(c.charState == 6 || c.rag) || c.id == 35 || c.id == 36) continue;
+		if (!(c.charState == 3 || c.charState == 4 || c.charState == 6 || c.rag) || c.id == 35 || c.id == 36) continue;
 		if (Math.abs(mx - c.x) <= c.w && my <= c.y && my >= c.y - c.h) return i;
 	}
 	return -1;
 }
 
+function ropePos(r, k) {
+	let i = r[k];
+	if (i < 0) return {x: r[k + 'x'], y: r[k + 'y']};
+	return {x: char[i].x, y: char[i].y - char[i].h / 2};
+}
+
+function ropeAdd(a, b) {
+	let r = {a: a.i, ax: a.x, ay: a.y, b: b.i, bx: b.x, by: b.y, sp: ropeType == 1, len: 0};
+	let p = ropePos(r, 'a');
+	let q = ropePos(r, 'b');
+	r.len = Math.max(Math.hypot(q.x - p.x, q.y - p.y), 30);
+	ropes.push(r);
+}
+
+function ropeSeg(px, py, x0, y0, x1, y1) {
+	let dx = x1 - x0;
+	let dy = y1 - y0;
+	let l = dx * dx + dy * dy;
+	let t = l > 0 ? Math.max(0, Math.min(1, ((px - x0) * dx + (py - y0) * dy) / l)) : 0;
+	return Math.hypot(px - x0 - dx * t, py - y0 - dy * t);
+}
+
+function ropeLoad() {
+	ropes = [];
+	for (let d of myLevelDialogue[1]) {
+		if (d.char != 98) continue;
+		let v = d.text.split(',').map(Number);
+		if ((v[0] >= 0 && !char[v[0]]) || (v[1] >= 0 && !char[v[1]])) continue;
+		let r = {a: v[0], b: v[1], sp: v[2] == 1, lock: v[3] == 1, len: 0};
+		r[v[0] < 0 ? 'ax' : 'bx'] = v[4] * 30 + 15;
+		r[v[0] < 0 ? 'ay' : 'by'] = v[5] * 30 + 15;
+		let p = ropePos(r, 'a');
+		let q = ropePos(r, 'b');
+		r.len = Math.max(Math.hypot(q.x - p.x, q.y - p.y), 30);
+		ropes.push(r);
+	}
+}
+
 function ropeInput() {
-	if (!ropeMode || !mouseIsDown || pmouseIsDown) return;
+	if (!ropeMode || !mouseIsDown || pmouseIsDown || rightClick) return;
 	let i = ropePick();
-	if (i < 0) {
-		ropeSel = -1;
+	if (i >= 0) {
+		if (ropeTile) {
+			ropeAdd(ropeTile, {i: i});
+			ropeTile = null;
+		} else if (ropeSel >= 0 && ropeSel != i) {
+			ropeAdd({i: ropeSel}, {i: i});
+		}
+		ropeSel = i;
 		return;
 	}
-	if (ropeSel >= 0 && ropeSel != i) {
-		let a = char[ropeSel];
-		let d = Math.hypot(char[i].x - a.x, (char[i].y - char[i].h / 2) - (a.y - a.h / 2));
-		ropes.push({a: ropeSel, b: i, len: Math.max(d, 30)});
+	for (let k = ropes.length - 1; k >= 0; k--) {
+		let p = ropePos(ropes[k], 'a');
+		let q = ropePos(ropes[k], 'b');
+		if (ropeSeg(_xmouse + cameraX, _ymouse + cameraY, p.x, p.y, q.x, q.y) <= 6) {
+			if (!ropes[k].lock) ropes.splice(k, 1);
+			ropeSel = -1;
+			ropeTile = null;
+			return;
+		}
 	}
-	ropeSel = i;
+	let tx = Math.floor((_xmouse + cameraX) / 30);
+	let ty = Math.floor((_ymouse + cameraY) / 30);
+	let bp = blockProperties[rbTile(tx, ty)];
+	if (bp[0] || bp[1] || bp[2] || bp[3]) {
+		let t = {i: -1, x: tx * 30 + 15, y: ty * 30 + 15};
+		if (ropeSel >= 0) {
+			ropeAdd({i: ropeSel}, t);
+			ropeSel = -1;
+		} else {
+			ropeTile = t;
+		}
+		return;
+	}
+	ropeSel = -1;
+	ropeTile = null;
+}
+
+function ropeEnd(r, k, bm) {
+	let i = r[k];
+	if (i < 0) return {x: r[k + 'x'], y: r[k + 'y'], vx: 0, vy: 0, im: 0};
+	let c = char[i];
+	let b = bm[i];
+	if (!b && _keysDown[67] && ifCarried(i)) {
+		let h = char[c.carriedBy];
+		return {x: c.x, y: c.y - c.h / 2, vx: h.vx, vy: h.vy, im: 1 / (h.weight > 0 ? h.weight : 0.2), b: h};
+	}
+	let mp = !b && (c.charState == 3 || c.charState == 4);
+	return {x: c.x, y: c.y - c.h / 2, vx: b ? b.vx : mp ? c.x - c.px : c.vx, vy: b ? b.vy : mp ? c.y - c.py : c.vy, im: b && !b.sl ? b.im : 0, b: b};
+}
+
+function ropePull(e, nx, ny, j) {
+	if (e.im > 0) {
+		e.b.vx += nx * j * e.im;
+		e.b.vy += ny * j * e.im;
+	}
 }
 
 function ropeSolve(bs) {
@@ -5422,31 +5516,27 @@ function ropeSolve(bs) {
 	for (let b of bs) bm[b.i] = b;
 	for (let it = 0; it < 6; it++) {
 		for (let r of ropes) {
-			let ca = char[r.a];
-			let cb = char[r.b];
-			if (!ca || !cb) continue;
-			let ba = bm[r.a];
-			let bb = bm[r.b];
-			let dx = cb.x - ca.x;
-			let dy = (cb.y - cb.h / 2) - (ca.y - ca.h / 2);
+			if (r.sp && it > 0) continue;
+			let ea = ropeEnd(r, 'a', bm);
+			let eb = ropeEnd(r, 'b', bm);
+			if (ea.im + eb.im == 0) continue;
+			let dx = eb.x - ea.x;
+			let dy = eb.y - ea.y;
 			let d = Math.hypot(dx, dy);
-			if (d <= r.len) continue;
+			if (d < 0.01) continue;
 			let nx = dx / d;
 			let ny = dy / d;
-			let ia = ba && !ba.sl ? ba.im : 0;
-			let ib = bb && !bb.sl ? bb.im : 0;
-			if (ia + ib == 0) continue;
-			let rv = ((bb ? bb.vx : cb.vx) - (ba ? ba.vx : ca.vx)) * nx + ((bb ? bb.vy : cb.vy) - (ba ? ba.vy : ca.vy)) * ny;
-			let j = (rv + (d - r.len) * 0.2) / (ia + ib);
-			if (j <= 0) continue;
-			if (ia > 0) {
-				ba.vx += nx * j * ia;
-				ba.vy += ny * j * ia;
+			let rv = (eb.vx - ea.vx) * nx + (eb.vy - ea.vy) * ny;
+			let j;
+			if (r.sp) {
+				j = (0.03 * (d - r.len) + 0.08 * rv) / (ea.im + eb.im);
+			} else {
+				if (d <= r.len) continue;
+				j = (rv + (d - r.len) * 0.2) / (ea.im + eb.im);
+				if (j <= 0) continue;
 			}
-			if (ib > 0) {
-				bb.vx -= nx * j * ib;
-				bb.vy -= ny * j * ib;
-			}
+			ropePull(ea, nx, ny, j);
+			ropePull(eb, -nx, -ny, j);
 		}
 	}
 }
@@ -5454,25 +5544,41 @@ function ropeSolve(bs) {
 function drawRopes(context) {
 	if (!ropeMode && ropes.length == 0) return;
 	context.save();
-	context.strokeStyle = '#505050';
 	context.lineWidth = 3;
 	context.lineCap = 'round';
 	for (let r of ropes) {
-		let a = char[r.a];
-		let b = char[r.b];
-		if (!a || !b) continue;
+		context.strokeStyle = r.lock ? '#383838' : '#505050';
+		let p = ropePos(r, 'a');
+		let q = ropePos(r, 'b');
 		context.beginPath();
-		context.moveTo(a.x, a.y - a.h / 2);
-		context.lineTo(b.x, b.y - b.h / 2);
+		context.moveTo(p.x, p.y);
+		if (r.sp) {
+			let l = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+			let nx = (-(q.y - p.y) / l) * 6;
+			let ny = ((q.x - p.x) / l) * 6;
+			for (let k = 1; k < 12; k++) {
+				let t = k / 12;
+				let sg = k % 2 == 1 ? 1 : -1;
+				context.lineTo(p.x + (q.x - p.x) * t + nx * sg, p.y + (q.y - p.y) * t + ny * sg);
+			}
+		}
+		context.lineTo(q.x, q.y);
 		context.stroke();
 	}
 	if (ropeMode) {
+		context.strokeStyle = '#ffcc00';
 		if (ropeSel >= 0 && char[ropeSel]) {
 			let c = char[ropeSel];
-			context.strokeStyle = '#ffcc00';
 			context.strokeRect(c.x - c.w, c.y - c.h, c.w * 2, c.h);
 			context.beginPath();
 			context.moveTo(c.x, c.y - c.h / 2);
+			context.lineTo(_xmouse + cameraX, _ymouse + cameraY);
+			context.stroke();
+		}
+		if (ropeTile) {
+			context.strokeRect(ropeTile.x - 15, ropeTile.y - 15, 30, 30);
+			context.beginPath();
+			context.moveTo(ropeTile.x, ropeTile.y);
 			context.lineTo(_xmouse + cameraX, _ymouse + cameraY);
 			context.stroke();
 		}
@@ -5480,18 +5586,26 @@ function drawRopes(context) {
 		context.font = '16px Helvetica';
 		context.textAlign = 'left';
 		context.textBaseline = 'top';
-		context.fillText('Rope', cameraX + 8, cameraY + 8);
+		context.fillText(ropeType == 1 ? 'Spring' : 'Rope', cameraX + 8, cameraY + 8);
 	}
 	context.restore();
 }
 
 function rbSim() {
 	for (let r of ropes) {
-		let a = char[r.a];
-		let b = char[r.b];
-		if (a && b && Math.hypot(b.x - a.x, (b.y - b.h / 2) - (a.y - a.h / 2)) > r.len + 1) {
-			a.slp = 0;
-			b.slp = 0;
+		let p = ropePos(r, 'a');
+		let q = ropePos(r, 'b');
+		let d = Math.hypot(q.x - p.x, q.y - p.y) - r.len;
+		if ((r.sp ? Math.abs(d) : d) > 1) {
+			if (r.a >= 0) char[r.a].slp = 0;
+			if (r.b >= 0) char[r.b].slp = 0;
+		}
+	}
+	for (let i = 0; i < charCount; i++) {
+		let g = char[i];
+		if (!g.rotation || Math.abs(g.av) < 0.005) continue;
+		for (let j = 0; j < charCount; j++) {
+			if (j != i && Math.abs(char[j].x - g.x) < g.w + char[j].w + 4 && Math.abs(char[j].y - g.y) < g.h + char[j].h + 4) char[j].slp = 0;
 		}
 	}
 	let bs = [];
@@ -5506,13 +5620,29 @@ function rbSim() {
 		let m = c.weight > 0 ? c.weight : 0.2;
 		let b = {i: i, c: c, x: c.x, y: c.y - c.h / 2, a: c.ang, hw: d[0], hh: d[1] / 2, sup: false, sl: false, dx: 0, dy: 0, e: c.rag ? 0.5 : 0.12};
 		b.icy = c.id == 2 && c.rag && icyRampCheck(c) != null;
+		b.pin = c.rotation;
 		b.im = 1 / m;
 		b.ii = 3 / (m * (b.hw * b.hw + b.hh * b.hh));
-		if (c.slp >= 30) {
+		let tq = 0;
+		for (let r of c.stoodOnBy) {
+			if (char[r].charState == 6) continue;
+			let off = char[r].x - c.x;
+			let w = char[r].weight2 > 0 ? char[r].weight2 : 0.2;
+			if (Math.abs(off) > 2) {
+				tq += off * w;
+				if (!allSolid(rbTile(Math.floor((c.x + Math.sign(off) * (c.w - 3)) / 30), Math.floor((c.y + 2) / 30)))) c.slp = 0;
+			}
+		}
+		if (c.slp >= 30 && !b.pin) {
 			if ((_frameCount + i) % 8 == 0 && !rbGrounded(c)) c.slp = 0;
 			else b.sl = true;
 		}
-		if (b.sl) {
+		if (b.pin) {
+			b.im = 0;
+			b.vx = 0;
+			b.vy = 0;
+			b.av = c.av;
+		} else if (b.sl) {
 			b.vx = 0;
 			b.vy = 0;
 			b.av = 0;
@@ -5520,13 +5650,6 @@ function rbSim() {
 			b.ii = 0;
 		} else {
 			c.onob = false;
-			let tq = 0;
-			for (let r of c.stoodOnBy) {
-				if (char[r].charState == 6) continue;
-				let off = char[r].x - c.x;
-				let w = char[r].weight2 > 0 ? char[r].weight2 : 0.2;
-				if (Math.abs(off) > 2) tq += off * w;
-			}
 			c.av = Math.max(-0.4, Math.min(0.4, c.av + tq * 0.0005));
 			c.applyForces(c.weight2, false, jumpPower * 0.7);
 			b.vx = c.vx;
@@ -5535,8 +5658,8 @@ function rbSim() {
 		}
 		bs.push(b);
 	}
-	if (bs.length == 0) return;
 	ropeSolve(bs);
+	if (bs.length == 0) return;
 	let mv = 0;
 	for (let b of bs) {
 		if (!b.sl) mv = Math.max(mv, Math.abs(b.vx), Math.abs(b.vy));
@@ -5546,6 +5669,16 @@ function rbSim() {
 	for (let s = 0; s < n; s++) rbSub(bs, 1 / n);
 	for (let b of bs) {
 		let c = b.c;
+		if (b.pin) {
+			c.vx = 0;
+			c.vy = 0;
+			c.av = Math.max(-0.5, Math.min(0.5, b.av * 0.998));
+			c.ang = rbAng(b.a);
+			rbFit(c, b.x, b.y);
+			c.slp = 0;
+			if (c.av != 0) c.justChanged = 2;
+			continue;
+		}
 		if (b.sl) {
 			c.onob = true;
 			continue;
@@ -5977,6 +6110,7 @@ function outOfRange(x, y) {
 
 function mouseOnGrid() {
 	return (
+		!lcRope &&
 		_xmouse - lcPan[0] > 330 - (scale * levelWidth) / 2 &&
 		_xmouse - lcPan[0] < 330 + (scale * levelWidth) / 2 &&
 		_ymouse - lcPan[1] > 240 - (scale * levelHeight) / 2 &&
@@ -6729,6 +6863,7 @@ function drawLCCharInfo(i, y) {
 				setUndo();
 				char.splice(i + 1, 0, cloneChar(char[i]));
 				myLevelChars[1].splice(i + 1, 0, cloneCharInfo(myLevelChars[1][i], true));
+				ropeRemap(x => (x > i ? x + 1 : x));
 				// Update dialogue tab
 				for (let j = myLevelDialogue[1].length - 1; j >= 0; j--) {
 					if (myLevelDialogue[1][j].char < 50) {
@@ -6745,6 +6880,7 @@ function drawLCCharInfo(i, y) {
 					setUndo();
 					[char[i], char[i + 1]] = [char[i + 1], char[i]];
 					[myLevelChars[1][i], myLevelChars[1][i + 1]] = [myLevelChars[1][i + 1], myLevelChars[1][i]];
+					ropeRemap(x => (x == i ? i + 1 : x == i + 1 ? i : x));
 					// Update dialogue tab
 					for (let j = myLevelDialogue[1].length - 1; j >= 0; j--) {
 						if (myLevelDialogue[1][j].char < 50) {
@@ -6764,6 +6900,7 @@ function drawLCCharInfo(i, y) {
 					setUndo();
 					[char[i], char[i - 1]] = [char[i - 1], char[i]];
 					[myLevelChars[1][i], myLevelChars[1][i - 1]] = [myLevelChars[1][i - 1], myLevelChars[1][i]];
+					ropeRemap(x => (x == i ? i - 1 : x == i - 1 ? i : x));
 					// Update dialogue tab
 					for (let j = myLevelDialogue[1].length - 1; j >= 0; j--) {
 						if (myLevelDialogue[1][j].char < 50) {
@@ -6819,6 +6956,7 @@ function drawLCCharInfo(i, y) {
 					setUndo();
 					char.splice(i, 1);
 					myLevelChars[1].splice(i, 1);
+					ropeRemap(x => (x == i ? -1 : x > i ? x - 1 : x));
 					// Update dialogue tab
 					for (let j = myLevelDialogue[1].length - 1; j >= 0; j--) {
 						if (myLevelDialogue[1][j].char < 50) {
@@ -6838,6 +6976,152 @@ function drawLCCharInfo(i, y) {
 	// 		charDropdown = -1;
 	// 	}
 	// }
+}
+
+function ropeRemap(f) {
+	for (let j = myLevelDialogue[1].length - 1; j >= 0; j--) {
+		let d = myLevelDialogue[1][j];
+		if (d.char != 98) continue;
+		let v = d.text.split(',');
+		let a = +v[0] < 0 ? -1 : f(+v[0]);
+		let b = +v[1] < 0 ? -1 : f(+v[1]);
+		if ((a < 0 && +v[0] >= 0) || (b < 0 && +v[1] >= 0)) {
+			myLevelDialogue[1].splice(j, 1);
+		} else {
+			v[0] = a;
+			v[1] = b;
+			d.text = v.join(',');
+		}
+	}
+	generateDialogueTextBoxes();
+}
+
+function lcRopeList() {
+	let out = [];
+	for (let k = 0; k < myLevelDialogue[1].length; k++) {
+		let d = myLevelDialogue[1][k];
+		if (d.char != 98) continue;
+		let v = d.text.split(',').map(Number);
+		if ((v[0] >= 0 && !char[v[0]]) || (v[1] >= 0 && !char[v[1]])) continue;
+		out.push({k: k, a: v[0], b: v[1], sp: v[2] == 1, lock: v[3] == 1, tx: v[4], ty: v[5]});
+	}
+	return out;
+}
+
+function lcRopePos(r, e) {
+	if (r[e] < 0) return {x: r.tx * 30 + 15, y: r.ty * 30 + 15};
+	return {x: char[r[e]].x, y: char[r[e]].y - char[r[e]].h / 2};
+}
+
+function lcRopeAdd(a, b, t) {
+	setUndo();
+	myLevelDialogue[1].push({char: 98, face: 2, text: a + ',' + b + ',' + ropeType + ',0,' + (t ? t.x + ',' + t.y : '0,0'), linecount: 1});
+	generateDialogueTextBoxes();
+}
+
+function lcRopeInput() {
+	if (!lcRope || lcPopUp || editingTextBox || _keysDown[32] || !mouseIsDown || pmouseIsDown) return;
+	let sc = scale / 30;
+	let lx = (_xmouse - lcPan[0] - (330 - (scale * levelWidth) / 2)) / sc;
+	let ly = (_ymouse - lcPan[1] - (240 - (scale * levelHeight) / 2)) / sc;
+	if (_xmouse >= 660 || _ymouse >= 480) return;
+	let hit = -1;
+	for (let i = 0; i < char.length; i++) {
+		if (char[i].placed && Math.abs(lx - char[i].x) <= char[i].w && ly <= char[i].y && ly >= char[i].y - char[i].h) {
+			hit = i;
+			break;
+		}
+	}
+	if (hit >= 0 && !rightClick) {
+		if (lcRopeTile) {
+			lcRopeAdd(-1, hit, lcRopeTile);
+			lcRopeTile = null;
+		} else if (lcRopeSel >= 0 && lcRopeSel != hit) {
+			lcRopeAdd(lcRopeSel, hit, null);
+		}
+		lcRopeSel = hit;
+		return;
+	}
+	let list = lcRopeList();
+	for (let n = list.length - 1; n >= 0; n--) {
+		let r = list[n];
+		let p = lcRopePos(r, 'a');
+		let q = lcRopePos(r, 'b');
+		if (ropeSeg(lx, ly, p.x, p.y, q.x, q.y) <= 6 / sc) {
+			setUndo();
+			if (rightClick) {
+				let v = myLevelDialogue[1][r.k].text.split(',');
+				v[3] = r.lock ? 0 : 1;
+				myLevelDialogue[1][r.k].text = v.join(',');
+			} else {
+				myLevelDialogue[1].splice(r.k, 1);
+			}
+			generateDialogueTextBoxes();
+			lcRopeSel = -1;
+			lcRopeTile = null;
+			return;
+		}
+	}
+	let tx = Math.floor(lx / 30);
+	let ty = Math.floor(ly / 30);
+	if (!rightClick && tx >= 0 && ty >= 0 && tx < levelWidth && ty < levelHeight) {
+		let bp = blockProperties[myLevel[1][ty][tx]];
+		if (bp[0] || bp[1] || bp[2] || bp[3]) {
+			if (lcRopeSel >= 0) {
+				lcRopeAdd(lcRopeSel, -1, {x: tx, y: ty});
+				lcRopeSel = -1;
+			} else {
+				lcRopeTile = {x: tx, y: ty};
+			}
+			return;
+		}
+	}
+	lcRopeSel = -1;
+	lcRopeTile = null;
+}
+
+function drawLCRopes() {
+	osctx5.lineCap = 'round';
+	osctx5.lineWidth = 3;
+	for (let r of lcRopeList()) {
+		let p = lcRopePos(r, 'a');
+		let q = lcRopePos(r, 'b');
+		osctx5.strokeStyle = r.lock ? '#383838' : '#505050';
+		osctx5.beginPath();
+		osctx5.moveTo(p.x, p.y);
+		if (r.sp) {
+			let l = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+			let nx = (-(q.y - p.y) / l) * 6;
+			let ny = ((q.x - p.x) / l) * 6;
+			for (let k = 1; k < 12; k++) {
+				let t = k / 12;
+				let sg = k % 2 == 1 ? 1 : -1;
+				osctx5.lineTo(p.x + (q.x - p.x) * t + nx * sg, p.y + (q.y - p.y) * t + ny * sg);
+			}
+		}
+		osctx5.lineTo(q.x, q.y);
+		osctx5.stroke();
+	}
+	if (!lcRope) return;
+	let sc = scale / 30;
+	let mx = (_xmouse - lcPan[0] - (330 - (scale * levelWidth) / 2)) / sc;
+	let my = (_ymouse - lcPan[1] - (240 - (scale * levelHeight) / 2)) / sc;
+	osctx5.strokeStyle = '#ffcc00';
+	if (lcRopeSel >= 0 && char[lcRopeSel]) {
+		let c = char[lcRopeSel];
+		osctx5.strokeRect(c.x - c.w, c.y - c.h, c.w * 2, c.h);
+		osctx5.beginPath();
+		osctx5.moveTo(c.x, c.y - c.h / 2);
+		osctx5.lineTo(mx, my);
+		osctx5.stroke();
+	}
+	if (lcRopeTile) {
+		osctx5.strokeRect(lcRopeTile.x * 30, lcRopeTile.y * 30, 30, 30);
+		osctx5.beginPath();
+		osctx5.moveTo(lcRopeTile.x * 30 + 15, lcRopeTile.y * 30 + 15);
+		osctx5.lineTo(mx, my);
+		osctx5.stroke();
+	}
 }
 
 function drawLCDiaInfo(i, y) {
@@ -6874,7 +7158,7 @@ function drawLCDiaInfo(i, y) {
 		ctx.font = diaInfoHeight + 'px Helvetica';
 		ctx.textAlign = 'left';
 		ctx.textBaseline = 'top';
-		ctx.fillText('lever switch', 665 + diaInfoHeight * 3 + 5, y);
+		ctx.fillText(myLevelDialogue[1][i].char == 98 ? 'rope' : 'lever switch', 665 + diaInfoHeight * 3 + 5, y);
 	} else {
 		textBoxes[1][i].y = y;
 		textBoxes[1][i].draw();
@@ -6967,6 +7251,7 @@ function drawLCChars() {
 	osctx5.save();
 	let scale2 = scale / 30;
 	osctx5.transform(scale2, 0, 0, scale2, 330 - (scale * levelWidth) / 2, 240 - (scale * levelHeight) / 2);
+	drawLCRopes();
 	for (let i = char.length - 1; i >= 0; i--) {
 		if (char[i].placed || (charDropdown == i && charDropdownType == 2)) {
 			if (!char[i].placed) osctx5.globalAlpha = 0.5;
@@ -7084,7 +7369,8 @@ function resetLCChar(i) {
 	char[i].y = char[i].py = +myLevelChars[1][i][2].toFixed(2) * 30;
 	// char[i].px = 70 + i * 40;
 	// char[i].py = 400 - i * 30;
-	char[i].charState = myLevelChars[1][i][3];
+	char[i].rotation = myLevelChars[1][i][3] == 11;
+	char[i].charState = myLevelChars[1][i][3] == 11 ? 6 : myLevelChars[1][i][3];
 	char[i].w = charD[id][0];
 	char[i].h = charD[id][1];
 	char[i].weight = charD[id][2];
@@ -7391,7 +7677,7 @@ function readLevelString(str) {
 			myLevelChars[1][e][0] = Math.max(Math.min(parseInt(entityInfo[0], 10), charD.length - 1), 0);
 			myLevelChars[1][e][1] = parseFloat(entityInfo[1], 10);
 			myLevelChars[1][e][2] = parseFloat(entityInfo[2], 10);
-			myLevelChars[1][e][3] = Math.max(Math.min(parseInt(entityInfo[3], 10), 10), 3);
+			myLevelChars[1][e][3] = Math.max(Math.min(parseInt(entityInfo[3], 10), 11), 3);
 		}
 		let id = myLevelChars[1][e][0];
 		if (charD[id][7] < 1) id = id < 35 ? 8 : 37;
@@ -7579,7 +7865,7 @@ function readExploreLevelString(str) {
 			myLevelChars[1][e][0] = Math.max(Math.min(parseInt(entityInfo[0], 10), charD.length - 1), 0);
 			myLevelChars[1][e][1] = parseFloat(entityInfo[1], 10);
 			myLevelChars[1][e][2] = parseFloat(entityInfo[2], 10);
-			myLevelChars[1][e][3] = Math.max(Math.min(parseInt(entityInfo[3], 10), 10), 3);
+			myLevelChars[1][e][3] = Math.max(Math.min(parseInt(entityInfo[3], 10), 11), 3);
 		}
 		let id = myLevelChars[1][e][0];
 		if (charD[id][7] < 1) id = id < 35 ? 8 : 37;
@@ -8189,6 +8475,7 @@ function mousemove(event) {
 
 function mousedown(event) {
 	mouseIsDown = true;
+	rightClick = event.button == 2;
 	lastClickX = _xmouse;
 	lastClickY = _ymouse;
 	if (onRect(_xmouse, _ymouse, 0, 0, cwidth, cheight)) {
@@ -8251,7 +8538,7 @@ function mousedown(event) {
 			// 	}
 			// }
 		} else {
-			if (selectedTab == 2 && !_keysDown[32]) {
+			if (selectedTab == 2 && !_keysDown[32] && !lcRope) {
 				if (tool != 4) {
 					setUndo();
 				}
@@ -8413,6 +8700,22 @@ function keydown(event) {
 	if (event.keyCode == 81 && menuScreen == 3 && !editingTextBox) {
 		ropeMode = !ropeMode;
 		ropeSel = -1;
+		ropeTile = null;
+	}
+	if (event.keyCode == 69 && ropeMode && menuScreen == 3 && !editingTextBox) {
+		ropeType = 1 - ropeType;
+		ropeSel = -1;
+		ropeTile = null;
+	}
+	if (event.keyCode == 81 && menuScreen == 5 && !lcPopUp && !editingTextBox) {
+		lcRope = !lcRope;
+		lcRopeSel = -1;
+		lcRopeTile = null;
+	}
+	if (event.keyCode == 69 && lcRope && menuScreen == 5 && !lcPopUp && !editingTextBox) {
+		ropeType = 1 - ropeType;
+		lcRopeSel = -1;
+		lcRopeTile = null;
 	}
 
 	if (editingTextBox && event.key) {
@@ -8528,6 +8831,9 @@ function setup() {
 	window.addEventListener('pointermove', mousemove);
 	window.addEventListener('pointerdown', mousedown);
 	window.addEventListener('pointerup', mouseup);
+	window.addEventListener('contextmenu', event => {
+		if (menuScreen == 3 || menuScreen == 5) event.preventDefault();
+	}, true);
 	window.addEventListener('keydown', keydown);
 	window.addEventListener('keyup', keyup);
 	if (isMobile) {
@@ -8720,6 +9026,7 @@ function draw() {
 											i != control &&
 											near(control, i) &&
 											char[i].charState >= 6 &&
+											!char[i].rotation &&
 											char[control].standingOn != i &&
 											onlyMovesOneBlock(i, control)
 										) {
@@ -9636,7 +9943,7 @@ function draw() {
 								665 + 240 - charInfoHeight * 3.5,
 								charDropdownY + charInfoHeight,
 								charInfoHeight * 3.5,
-								textSize * 7
+								textSize * 8
 							);
 							ctx.textBaseline = 'top';
 							ctx.textAlign = 'right';
@@ -10221,6 +10528,7 @@ function draw() {
 				updateLCtiles();
 			}
 
+			lcRopeInput();
 			osctx5.clearRect(0, 0, osc5.width / pixelRatio, osc5.height / pixelRatio);
 			osctx5.save();
 			osctx5.translate(lcPan[0], lcPan[1]);
@@ -11865,7 +12173,8 @@ class Character {
 		this.carriedBy = 200;
 		this.landTimer = 200;
 		this.deathTimer = 30;
-		this.charState = tcharState;
+		this.rotation = tcharState == 11;
+		this.charState = tcharState == 11 ? 6 : tcharState;
 		this.standingOn = -1;
 		this.stoodOnBy = [];
 		this.w = tw;
