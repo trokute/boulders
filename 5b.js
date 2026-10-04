@@ -2000,6 +2000,9 @@ let lcRope = false;
 let lcRopeSel = -1;
 let lcRopeTile = null;
 let rightClick = false;
+let rbStep = 1000 / 24;
+let rbLastTick = 0;
+let rbScale = rbStep / (1000 / 60);
 let ropes = [];
 let ropeSel = -1;
 let ropeTile = null;
@@ -5295,6 +5298,14 @@ function rbTile(x, y) {
 
 function rbFit(c, cx, cy) {
 	let d = charD[c.id];
+	if (c.circ) {
+		let r = Math.max(d[0], d[1] / 2);
+		c.w = r;
+		c.h = r * 2;
+		c.x = cx;
+		c.y = cy + r;
+		return;
+	}
 	let s = Math.abs(Math.sin(c.ang));
 	let k = Math.abs(Math.cos(c.ang));
 	let ey = s * d[0] + k * d[1] / 2;
@@ -5832,6 +5843,13 @@ function rbPoly(b) {
 	let s = Math.sin(b.a);
 	let k = Math.cos(b.a);
 	let p = [];
+	if (b.n) {
+		for (let j = 0; j < b.n; j++) {
+			let t = b.a + ((j + 0.5) * Math.PI * 2) / b.n;
+			p.push({x: b.x + Math.cos(t) * b.hw, y: b.y + Math.sin(t) * b.hw});
+		}
+		return p;
+	}
 	for (let j = 0; j < 4; j++) {
 		let lx = rbCorner[j][0] * b.hw;
 		let ly = rbCorner[j][1] * b.hh;
@@ -5842,8 +5860,8 @@ function rbPoly(b) {
 
 function rbNorms(p) {
 	let n = [];
-	for (let k = 0; k < 4; k++) {
-		let q = p[(k + 1) % 4];
+	for (let k = 0; k < p.length; k++) {
+		let q = p[(k + 1) % p.length];
 		let ex = q.x - p[k].x;
 		let ey = q.y - p[k].y;
 		let l = Math.sqrt(ex * ex + ey * ey);
@@ -5855,9 +5873,9 @@ function rbNorms(p) {
 function rbAxis(p, q, np, mk) {
 	let best = -1e9;
 	let bk = -1;
-	for (let k = 0; k < 4; k++) {
+	for (let k = 0; k < p.length; k++) {
 		let s = 1e9;
-		for (let j = 0; j < 4; j++) {
+		for (let j = 0; j < q.length; j++) {
 			s = Math.min(s, (q[j].x - p[k].x) * np[k].x + (q[j].y - p[k].y) * np[k].y);
 		}
 		if (s > rbM) return null;
@@ -5896,7 +5914,7 @@ function rbMan(pa, pb, na, nb, mka, mkb) {
 	let kr = flip ? rb.k : ra.k;
 	let e = 0;
 	let md = 1e9;
-	for (let k = 0; k < 4; k++) {
+	for (let k = 0; k < ni.length; k++) {
 		let d = ni[k].x * nr.x + ni[k].y * nr.y;
 		if (d < md) {
 			md = d;
@@ -5904,13 +5922,13 @@ function rbMan(pa, pb, na, nb, mka, mkb) {
 		}
 	}
 	let r1 = ref[kr];
-	let r2 = ref[(kr + 1) % 4];
+	let r2 = ref[(kr + 1) % ref.length];
 	let tx = r2.x - r1.x;
 	let ty = r2.y - r1.y;
 	let tl = Math.sqrt(tx * tx + ty * ty);
 	tx /= tl;
 	ty /= tl;
-	let pts = [inc[e], inc[(e + 1) % 4]];
+	let pts = [inc[e], inc[(e + 1) % inc.length]];
 	pts = rbClip(pts, -tx, -ty, -(tx * r1.x + ty * r1.y));
 	if (pts.length < 2) return null;
 	pts = rbClip(pts, tx, ty, tx * r2.x + ty * r2.y);
@@ -5931,7 +5949,7 @@ function rbTiles(b, ms) {
 	let x1 = -1e9;
 	let y0 = 1e9;
 	let y1 = -1e9;
-	for (let j = 0; j < 4; j++) {
+	for (let j = 0; j < p.length; j++) {
 		x0 = Math.min(x0, p[j].x);
 		x1 = Math.max(x1, p[j].x);
 		y0 = Math.min(y0, p[j].y);
@@ -5939,6 +5957,7 @@ function rbTiles(b, ms) {
 	}
 	for (let ty = Math.floor((y0 - rbM) / 30); ty <= Math.floor((y1 + rbM) / 30); ty++) {
 		for (let tx = Math.floor((x0 - rbM) / 30); tx <= Math.floor((x1 + rbM) / 30); tx++) {
+			if (b.ign && b.ign.some((g) => g.x == tx && g.y == ty)) continue;
 			let t = rbTile(tx, ty);
 			let bp = blockProperties[t];
 			if (!(bp[0] || bp[1] || bp[2] || bp[3])) continue;
@@ -5952,7 +5971,7 @@ function rbTiles(b, ms) {
 					mk[k] = false;
 				} else if (!full) {
 					let m = 1e9;
-					for (let j = 0; j < 4; j++) {
+					for (let j = 0; j < p.length; j++) {
 						m = Math.min(m, (p[j].x - tp[k].x) * rbTN[k].x + (p[j].y - tp[k].y) * rbTN[k].y);
 					}
 					if (m < -0.6) mk[k] = false;
@@ -5968,6 +5987,53 @@ function rbTiles(b, ms) {
 				if (t == 16 || t == 85) m.sv = 2.48;
 				ms.push(m);
 			}
+		}
+	}
+}
+
+function rbCirc(b, ms) {
+	let r = b.hw;
+	for (let ty = Math.floor((b.y - r - rbM) / 30); ty <= Math.floor((b.y + r + rbM) / 30); ty++) {
+		for (let tx = Math.floor((b.x - r - rbM) / 30); tx <= Math.floor((b.x + r + rbM) / 30); tx++) {
+			let t = rbTile(tx, ty);
+			let bp = blockProperties[t];
+			if (!(bp[0] || bp[1] || bp[2] || bp[3])) continue;
+			let qx = Math.max(tx * 30, Math.min(tx * 30 + 30, b.x));
+			let qy = Math.max(ty * 30, Math.min(ty * 30 + 30, b.y));
+			let vx = b.x - qx;
+			let vy = b.y - qy;
+			let d = Math.sqrt(vx * vx + vy * vy);
+			if (d > r + rbM) continue;
+			let nx;
+			let ny;
+			if (d < 0.001) {
+				let e = [b.y - ty * 30, tx * 30 + 30 - b.x, ty * 30 + 30 - b.y, b.x - tx * 30];
+				let k = 0;
+				for (let j = 1; j < 4; j++) {
+					if (e[j] < e[k]) k = j;
+				}
+				nx = -rbTN[k].x;
+				ny = -rbTN[k].y;
+				d = -e[k];
+			} else {
+				nx = -vx / d;
+				ny = -vy / d;
+			}
+			let f = 0;
+			for (let j = 1; j < 4; j++) {
+				if (-rbTN[j].x * nx - rbTN[j].y * ny > -rbTN[f].x * nx - rbTN[f].y * ny) f = j;
+			}
+			let mk = [bp[1], bp[2], bp[0], bp[3]];
+			let nb = [[tx, ty - 1], [tx + 1, ty], [tx, ty + 1], [tx - 1, ty]];
+			if (!mk[f] || allSolid(rbTile(nb[f][0], nb[f][1]))) continue;
+			if (!allSolid(t)) {
+				let tp = [{x: tx * 30, y: ty * 30}, {x: tx * 30 + 30, y: ty * 30}, {x: tx * 30 + 30, y: ty * 30 + 30}, {x: tx * 30, y: ty * 30 + 30}];
+				if ((b.x - tp[f].x) * rbTN[f].x + (b.y - tp[f].y) * rbTN[f].y - r < -0.6) continue;
+			}
+			let m = {a: b, b: null, n: {x: nx, y: ny}, pts: [{x: b.x + nx * r, y: b.y + ny * r, d: r - d}], t: t, sv: 0, tx: tx, ty: ty};
+			if (t == 14 || t == 83) m.sv = -2.48;
+			if (t == 16 || t == 85) m.sv = 2.48;
+			ms.push(m);
 		}
 	}
 }
@@ -6071,13 +6137,18 @@ function rbSub(bs, dt) {
 		b.dy = 0;
 	}
 	for (let b of bs) {
-		if (!b.sl && !b.icy && !b.pin) rbTiles(b, ms);
+		if (!b.sl && !b.icy && !b.pin) {
+			if (b.n) rbCirc(b, ms);
+			else rbTiles(b, ms);
+		}
 	}
 	for (let u = 0; u < bs.length; u++) {
 		for (let v = u + 1; v < bs.length; v++) {
 			let a = bs[u];
 			let b = bs[v];
 			if (a.sl && b.sl) continue;
+			if (a.ch && a.ch == b.ch) continue;
+			if ((a.sk && a.sk.includes(b.i)) || (b.sk && b.sk.includes(a.i))) continue;
 			if (Math.abs(a.x - b.x) > a.hw + a.hh + b.hw + b.hh || Math.abs(a.y - b.y) > a.hw + a.hh + b.hw + b.hh) continue;
 			let pa = rbPoly(a);
 			let pb = rbPoly(b);
@@ -6096,7 +6167,7 @@ function rbSub(bs, dt) {
 		b.y += b.vy * dt;
 		b.a += b.av * dt;
 	}
-	for (let it = 0; it < 3; it++) {
+	for (let it = 0; it < 6; it++) {
 		for (let m of ms) {
 			let ia = m.a ? m.a.im : 0;
 			let ib = m.b ? m.b.im : 0;
@@ -6161,11 +6232,30 @@ function ropePos(r, k) {
 }
 
 function ropeAdd(a, b) {
-	let r = {a: a.i, ax: a.x, ay: a.y, b: b.i, bx: b.x, by: b.y, sp: ropeType == 1, len: 0};
+	let r = {a: a.i, ax: a.x, ay: a.y, b: b.i, bx: b.x, by: b.y, sp: ropeType == 1, ch: ropeType == 2, len: 0};
 	let p = ropePos(r, 'a');
 	let q = ropePos(r, 'b');
 	r.len = Math.max(Math.hypot(q.x - p.x, q.y - p.y), 30);
+	if (r.ch) chainInit(r);
 	ropes.push(r);
+}
+
+function chainInit(r) {
+	let p = ropePos(r, 'a');
+	let q = ropePos(r, 'b');
+	let n = Math.max(1, Math.min(120, Math.round(r.len / 16) * 3 - 1));
+	r.seg = r.len / (n + 1);
+	r.links = [];
+	for (let k = 1; k <= n; k++) {
+		let t = k / (n + 1);
+		r.links.push({i: -2, c: null, x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, rpx: p.x + (q.x - p.x) * t, rpy: p.y + (q.y - p.y) * t, a: 0, hw: 7, hh: 7, vx: 0, vy: 0, av: 0, im: 30, ii: 0, e: 0.1, sup: false, sl: false, icy: false, pin: false, dx: 0, dy: 0, link: true, ch: r, sk: [], ign: []});
+	}
+	let f = r.links[0];
+	let l = r.links[n - 1];
+	if (r.a >= 0) f.sk.push(r.a);
+	else f.ign.push({x: Math.floor(r.ax / 30), y: Math.floor(r.ay / 30)});
+	if (r.b >= 0) l.sk.push(r.b);
+	else l.ign.push({x: Math.floor(r.bx / 30), y: Math.floor(r.by / 30)});
 }
 
 function ropeSeg(px, py, x0, y0, x1, y1) {
@@ -6181,13 +6271,22 @@ function ropeLoad() {
 	for (let d of myLevelDialogue[1]) {
 		if (d.char != 98) continue;
 		let v = d.text.split(',').map(Number);
+		if (d.text.charAt(0) == 'c') {
+			let c = char[v[1]];
+			if (c && c.charState == 6 && !c.soft) {
+				c.circ = true;
+				rbFit(c, c.x, c.y - c.h / 2);
+			}
+			continue;
+		}
 		if ((v[0] >= 0 && !char[v[0]]) || (v[1] >= 0 && !char[v[1]])) continue;
-		let r = {a: v[0], b: v[1], sp: v[2] == 1, lock: v[3] == 1, len: 0};
+		let r = {a: v[0], b: v[1], sp: v[2] == 1, ch: v[2] == 2, lock: v[3] == 1, len: 0};
 		r[v[0] < 0 ? 'ax' : 'bx'] = v[4] * 30 + 15;
 		r[v[0] < 0 ? 'ay' : 'by'] = v[5] * 30 + 15;
 		let p = ropePos(r, 'a');
 		let q = ropePos(r, 'b');
 		r.len = Math.max(Math.hypot(q.x - p.x, q.y - p.y), 30);
+		if (r.ch) chainInit(r);
 		ropes.push(r);
 	}
 }
@@ -6237,27 +6336,114 @@ function ropeEnd(r, k, bm) {
 	if (i < 0) return {x: r[k + 'x'], y: r[k + 'y'], vx: 0, vy: 0, im: 0};
 	let c = char[i];
 	let b = bm[i];
-	if (!b && _keysDown[67] && ifCarried(i)) {
+	if (!b && (_keysDown[67] || r.ch) && ifCarried(i)) {
 		let h = char[c.carriedBy];
-		return {x: c.x, y: c.y - c.h / 2, vx: h.vx, vy: h.vy, im: 1 / (h.weight > 0 ? h.weight : 0.2), b: h};
+		return {x: c.x, y: c.y - c.h / 2, vx: h.vx, vy: h.vy, im: 1 / (h.weight > 0 ? h.weight : 1), b: h, h: r.ch};
 	}
 	let mp = !b && (c.charState == 3 || c.charState == 4);
 	return {x: c.x, y: c.y - c.h / 2, vx: b ? b.vx : mp ? c.x - c.px : c.vx, vy: b ? b.vy : mp ? c.y - c.py : c.vy, im: b && !b.sl ? b.im : 0, b: b};
 }
 
 function ropePull(e, nx, ny, j) {
+	if (e.h && e.b.jchCool > 0) return;
 	if (e.im > 0) {
-		e.b.vx += nx * j * e.im;
-		e.b.vy += ny * j * e.im;
+		let dx = nx * j * e.im;
+		let dy = ny * j * e.im;
+		if (e.h) {
+			let m = Math.hypot(dx, dy);
+			let k = Math.max(0, Math.min(1, (0.2 - e.b.chv) / (m || 1)));
+			e.b.chv += m * k;
+			dx *= k;
+			dy *= k;
+		}
+		e.b.vx += dx;
+		e.b.vy += dy;
+	}
+}
+
+function ropeChain(r, bm, rev) {
+	let ns = [ropeEnd(r, 'a', bm)];
+	for (let L of r.links) ns.push({x: L.x, y: L.y, vx: L.vx, vy: L.vy, im: L.im, b: L});
+	ns.push(ropeEnd(r, 'b', bm));
+	for (let u = 0; u < ns.length - 1; u++) {
+		let k = rev ? ns.length - 2 - u : u;
+		let ea = ns[k];
+		let eb = ns[k + 1];
+		if (ea.im + eb.im == 0) continue;
+		let dx = eb.x - ea.x;
+		let dy = eb.y - ea.y;
+		let d = Math.hypot(dx, dy);
+		if (d < r.seg - 0.5 || d < 0.01) continue;
+		let nx = dx / d;
+		let ny = dy / d;
+		let rv = (eb.vx - ea.vx) * nx + (eb.vy - ea.vy) * ny;
+		let j = rv / (ea.im + eb.im);
+		if (j <= 0) continue;
+		ropePull(ea, nx, ny, j);
+		ropePull(eb, -nx, -ny, j);
+		if (ea.b) {
+			ea.vx = ea.b.vx;
+			ea.vy = ea.b.vy;
+		}
+		if (eb.b) {
+			eb.vx = eb.b.vx;
+			eb.vy = eb.b.vy;
+		}
+	}
+}
+
+function chainFix(bs) {
+	let bm = {};
+	for (let b of bs) {
+		if (!b.link) bm[b.i] = b;
+	}
+	for (let r of ropes) {
+		if (!r.ch) continue;
+		let ends = [];
+		for (let k of ['a', 'b']) {
+			let i = r[k];
+			if (i >= 0 && bm[i]) ends.push(bm[i].sl ? {x: bm[i].x, y: bm[i].y, im: 0} : bm[i]);
+			else {
+				let p = ropePos(r, k);
+				ends.push({x: p.x, y: p.y, im: 0});
+			}
+		}
+		let ns = [ends[0]].concat(r.links, [ends[1]]);
+		for (let it = 0; it < 50; it++) {
+			for (let u = 0; u < ns.length - 1; u++) {
+				let k = it % 2 == 1 ? ns.length - 2 - u : u;
+				let a = ns[k];
+				let b = ns[k + 1];
+				let fa = a.im > 0 ? 1 : 0;
+				let fb = b.im > 0 ? 1 : 0;
+				if (fa + fb == 0) continue;
+				let dx = b.x - a.x;
+				let dy = b.y - a.y;
+				let d = Math.hypot(dx, dy);
+				if (d <= r.seg || d < 0.01) continue;
+				let e = (d - r.seg) / (fa + fb);
+				fa *= e;
+				fb *= e;
+				a.x += (dx / d) * fa;
+				a.y += (dy / d) * fa;
+				b.x -= (dx / d) * fb;
+				b.y -= (dy / d) * fb;
+			}
+		}
 	}
 }
 
 function ropeSolve(bs) {
+	for (let c of char) c.chv = 0;
 	let bm = {};
-	for (let b of bs) bm[b.i] = b;
-	for (let it = 0; it < 6; it++) {
+	for (let b of bs) {
+		if (!b.link) bm[b.i] = b;
+	}
+	let n = ropes.some((r) => r.ch) ? 30 : 6;
+	for (let it = 0; it < n; it++) {
 		for (let r of ropes) {
-			if (r.sp && it > 0) continue;
+			if (r.ch) ropeChain(r, bm, it % 2 == 1);
+			if (it >= 6 || (r.sp && it > 0)) continue;
 			let ea = ropeEnd(r, 'a', bm);
 			let eb = ropeEnd(r, 'b', bm);
 			if (ea.im + eb.im == 0) continue;
@@ -6288,12 +6474,15 @@ function drawRopes(context) {
 	context.lineWidth = 3;
 	context.lineCap = 'round';
 	for (let r of ropes) {
-		context.strokeStyle = r.lock ? '#383838' : '#505050';
+		context.strokeStyle = r.ch ? (r.lock ? '#707070' : '#8c8c8c') : r.lock ? '#383838' : '#505050';
 		let p = ropePos(r, 'a');
 		let q = ropePos(r, 'b');
 		context.beginPath();
 		context.moveTo(p.x, p.y);
-		if (r.sp) {
+		if (r.ch) {
+			let rbAlpha = Math.max(0, Math.min(1, (window.performance.now() - rbLastTick) / rbStep));
+			for (let L of r.links) context.lineTo(L.rpx + (L.x - L.rpx) * rbAlpha, L.rpy + (L.y - L.rpy) * rbAlpha);
+		} else if (r.sp) {
 			let l = Math.hypot(q.x - p.x, q.y - p.y) || 1;
 			let nx = (-(q.y - p.y) / l) * 6;
 			let ny = ((q.x - p.x) / l) * 6;
@@ -6327,17 +6516,36 @@ function drawRopes(context) {
 		context.font = '16px Helvetica';
 		context.textAlign = 'left';
 		context.textBaseline = 'top';
-		context.fillText(ropeType == 1 ? 'Spring' : 'Rope', cameraX + 8, cameraY + 8);
+		context.fillText(ropeType == 1 ? 'Spring' : ropeType == 2 ? 'Chain' : 'Rope', cameraX + 8, cameraY + 8);
 	}
 	context.restore();
 }
 
 function rbSim() {
+	let rbNow = window.performance.now();
+	if (rbLastTick == 0) rbLastTick = rbNow;
+	if (rbNow - rbLastTick < rbStep) return;
+	rbLastTick += rbStep;
+	if (rbNow - rbLastTick > rbStep) rbLastTick = rbNow;
+	for (let r of ropes) {
+		if (r.ch) {
+			for (let L of r.links) {
+				L.rpx = L.x;
+				L.rpy = L.y;
+			}
+		}
+	}
 	for (let r of ropes) {
 		let p = ropePos(r, 'a');
 		let q = ropePos(r, 'b');
 		let d = Math.hypot(q.x - p.x, q.y - p.y) - r.len;
-		if ((r.sp ? Math.abs(d) : d) > 1) {
+		let wk = (r.sp ? Math.abs(d) : d) > 1;
+		if (r.ch) {
+			for (let L of r.links) {
+				if (Math.abs(L.vx) + Math.abs(L.vy) > 0.4) wk = true;
+			}
+		}
+		if (wk) {
 			if (r.a >= 0) char[r.a].slp = 0;
 			if (r.b >= 0) char[r.b].slp = 0;
 		}
@@ -6359,11 +6567,12 @@ function rbSim() {
 		let c = char[i];
 		let d = charD[c.id];
 		let m = c.weight > 0 ? c.weight : 0.2;
-		let b = {i: i, c: c, x: c.x, y: c.y - c.h / 2, a: c.ang, hw: d[0], hh: d[1] / 2, sup: false, sl: false, dx: 0, dy: 0, e: c.rag ? 0.5 : 0.12};
+		let cr = c.circ ? Math.max(d[0], d[1] / 2) : 0;
+		let b = {i: i, c: c, x: c.x, y: c.y - c.h / 2, a: c.ang, hw: c.circ ? cr : d[0], hh: c.circ ? cr : d[1] / 2, n: c.circ ? 16 : 0, sup: false, sl: false, dx: 0, dy: 0, e: c.rag ? 0.5 : 0.12};
 		b.icy = c.id == 2 && c.rag && icyRampCheck(c) != null;
 		b.pin = c.rotation;
 		b.im = 1 / m;
-		b.ii = 3 / (m * (b.hw * b.hw + b.hh * b.hh));
+		b.ii = c.circ ? 2 / (m * cr * cr) : 3 / (m * (b.hw * b.hw + b.hh * b.hh));
 		let tq = 0;
 		for (let r of c.stoodOnBy) {
 			if (char[r].charState == 6) continue;
@@ -6392,7 +6601,7 @@ function rbSim() {
 		} else {
 			c.onob = false;
 			c.av = Math.max(-0.4, Math.min(0.4, c.av + tq * 0.0005));
-			c.applyForces(c.weight2, false, jumpPower * 0.7);
+			c.applyForces(c.weight2 * rbScale * rbScale, false, jumpPower * 0.7);
 			if (c.balloon) {
 				c.vy -= Math.sqrt(Math.abs(c.weight2));
 				c.vy += (-2 - c.vy) * 0.08;
@@ -6402,6 +6611,15 @@ function rbSim() {
 			b.av = c.av;
 		}
 		bs.push(b);
+	}
+	for (let r of ropes) {
+		if (!r.ch) continue;
+		for (let L of r.links) {
+			L.vy = Math.min(L.vy + 0.7 * rbScale, 25);
+			L.vx = Math.max(-25, Math.min(25, L.vx * 0.995));
+			L.sup = false;
+			bs.push(L);
+		}
 	}
 	ropeSolve(bs);
 	if (bs.length == 0) return;
@@ -6413,11 +6631,16 @@ function rbSim() {
 		b.vx0 = b.vx;
 		b.vy0 = b.vy;
 	}
-	let n = Math.min(4, Math.max(1, Math.ceil(mv / 6)));
-	rbM = mv / n + 1;
-	for (let s = 0; s < n; s++) rbSub(bs, 1 / n);
+	let n = Math.min(16, Math.max(1, Math.ceil((mv * rbScale) / 2)));
+	rbM = (mv * rbScale) / n + 1;
+	for (let s = 0; s < n; s++) rbSub(bs, rbScale / n);
+	chainFix(bs);
 	for (let b of bs) {
 		let c = b.c;
+		if (b.link) {
+			if (b.sup) b.vx *= 0.95;
+			continue;
+		}
 		if (b.pin) {
 			c.vx = 0;
 			c.vy = 0;
@@ -6953,6 +7176,7 @@ function outOfRange(x, y) {
 function mouseOnGrid() {
 	return (
 		!lcRope &&
+		!(rightClick && lcCircHit() >= 0) &&
 		_xmouse - lcPan[0] > 330 - (scale * levelWidth) / 2 &&
 		_xmouse - lcPan[0] < 330 + (scale * levelWidth) / 2 &&
 		_ymouse - lcPan[1] > 240 - (scale * levelHeight) / 2 &&
@@ -7825,6 +8049,12 @@ function ropeRemap(f) {
 		let d = myLevelDialogue[1][j];
 		if (d.char != 98) continue;
 		let v = d.text.split(',');
+		if (d.text.charAt(0) == 'c') {
+			let e = f(+v[1]);
+			if (e < 0) myLevelDialogue[1].splice(j, 1);
+			else d.text = 'c,' + e;
+			continue;
+		}
 		let a = +v[0] < 0 ? -1 : f(+v[0]);
 		let b = +v[1] < 0 ? -1 : f(+v[1]);
 		if ((a < 0 && +v[0] >= 0) || (b < 0 && +v[1] >= 0)) {
@@ -7842,12 +8072,43 @@ function lcRopeList() {
 	let out = [];
 	for (let k = 0; k < myLevelDialogue[1].length; k++) {
 		let d = myLevelDialogue[1][k];
-		if (d.char != 98) continue;
+		if (d.char != 98 || d.text.charAt(0) == 'c') continue;
 		let v = d.text.split(',').map(Number);
 		if ((v[0] >= 0 && !char[v[0]]) || (v[1] >= 0 && !char[v[1]])) continue;
-		out.push({k: k, a: v[0], b: v[1], sp: v[2] == 1, lock: v[3] == 1, tx: v[4], ty: v[5]});
+		out.push({k: k, a: v[0], b: v[1], sp: v[2] == 1, ch: v[2] == 2, lock: v[3] == 1, tx: v[4], ty: v[5]});
 	}
 	return out;
+}
+
+function lcCircHit() {
+	if (_xmouse >= 660 || _ymouse >= 480) return -1;
+	let sc = scale / 30;
+	let lx = (_xmouse - lcPan[0] - (330 - (scale * levelWidth) / 2)) / sc;
+	let ly = (_ymouse - lcPan[1] - (240 - (scale * levelHeight) / 2)) / sc;
+	for (let i = 0; i < char.length; i++) {
+		let c = char[i];
+		if (c.placed && c.charState == 6 && !c.soft && c.id != 35 && c.id != 36 && Math.abs(lx - c.x) <= c.w && ly <= c.y && ly >= c.y - c.h) return i;
+	}
+	return -1;
+}
+
+function lcCircFind(i) {
+	for (let k = 0; k < myLevelDialogue[1].length; k++) {
+		let d = myLevelDialogue[1][k];
+		if (d.char == 98 && d.text == 'c,' + i) return k;
+	}
+	return -1;
+}
+
+function lcCircInput() {
+	if (lcRope || lcPopUp || editingTextBox || _keysDown[32] || !mouseIsDown || pmouseIsDown || !rightClick || charDropdown >= 0) return;
+	let i = lcCircHit();
+	if (i < 0) return;
+	setUndo();
+	let k = lcCircFind(i);
+	if (k >= 0) myLevelDialogue[1].splice(k, 1);
+	else myLevelDialogue[1].push({char: 98, face: 2, text: 'c,' + i, linecount: 1});
+	generateDialogueTextBoxes();
 }
 
 function lcRopePos(r, e) {
@@ -7923,12 +8184,25 @@ function lcRopeInput() {
 }
 
 function drawLCRopes() {
+	osctx5.save();
+	osctx5.strokeStyle = '#ffcc00';
+	osctx5.lineWidth = 2;
+	for (let d of myLevelDialogue[1]) {
+		if (d.char != 98 || d.text.charAt(0) != 'c') continue;
+		let c = char[+d.text.split(',')[1]];
+		if (!c || !c.placed) continue;
+		let dd = charD[c.id];
+		osctx5.beginPath();
+		osctx5.arc(c.x, c.y - c.h / 2, Math.max(dd[0], dd[1] / 2), 0, Math.PI * 2);
+		osctx5.stroke();
+	}
+	osctx5.restore();
 	osctx5.lineCap = 'round';
 	osctx5.lineWidth = 3;
 	for (let r of lcRopeList()) {
 		let p = lcRopePos(r, 'a');
 		let q = lcRopePos(r, 'b');
-		osctx5.strokeStyle = r.lock ? '#383838' : '#505050';
+		osctx5.strokeStyle = r.ch ? (r.lock ? '#707070' : '#8c8c8c') : r.lock ? '#383838' : '#505050';
 		osctx5.beginPath();
 		osctx5.moveTo(p.x, p.y);
 		if (r.sp) {
@@ -8000,7 +8274,7 @@ function drawLCDiaInfo(i, y) {
 		ctx.font = diaInfoHeight + 'px Helvetica';
 		ctx.textAlign = 'left';
 		ctx.textBaseline = 'top';
-		ctx.fillText(myLevelDialogue[1][i].char == 98 ? 'rope' : 'lever switch', 665 + diaInfoHeight * 3 + 5, y);
+		ctx.fillText(myLevelDialogue[1][i].char == 98 ? (myLevelDialogue[1][i].text.charAt(0) == 'c' ? 'circle' : 'rope') : 'lever switch', 665 + diaInfoHeight * 3 + 5, y);
 	} else {
 		textBoxes[1][i].y = y;
 		textBoxes[1][i].draw();
@@ -9548,7 +9822,7 @@ function keydown(event) {
 		ropeTile = null;
 	}
 	if (event.keyCode == 69 && ropeMode && menuScreen == 3 && !editingTextBox) {
-		ropeType = 1 - ropeType;
+		ropeType = (ropeType + 1) % 3;
 		ropeSel = -1;
 		ropeTile = null;
 	}
@@ -9558,7 +9832,7 @@ function keydown(event) {
 		lcRopeTile = null;
 	}
 	if (event.keyCode == 69 && lcRope && menuScreen == 5 && !lcPopUp && !editingTextBox) {
-		ropeType = 1 - ropeType;
+		ropeType = (ropeType + 1) % 3;
 		lcRopeSel = -1;
 		lcRopeTile = null;
 	}
@@ -9944,6 +10218,7 @@ function draw() {
 							if (char[control].submerged == 3) char[control].swimUp(0.14 / char[control].weight2);
 							else char[control].jump(-jumpPower);
 							char[control].onob = false;
+							char[control].jchCool = 20;
 							fallOff(control);
 						}
 					} else char[control].landTimer = 80;
@@ -9986,6 +10261,7 @@ function draw() {
 				char[i].fy = char[i].charState < 5 || char[i].onob || char[i].submerged >= 1 || ifCarried(i) ? char[i].y : Math.min(char[i].fy, char[i].y);
 				if (char[i].charState >= 5) {
 					char[i].landTimer = char[i].landTimer + 1;
+				if (char[i].jchCool > 0) char[i].jchCool--;
 					if (char[i].ragCool > 0) char[i].ragCool--;
 					if (char[i].carry && char[char[i].carryObject].justChanged < char[i].justChanged) {
 						char[char[i].carryObject].justChanged = char[i].justChanged;
@@ -11398,6 +11674,7 @@ function draw() {
 			}
 
 			lcRopeInput();
+			lcCircInput();
 			osctx5.clearRect(0, 0, osc5.width / pixelRatio, osc5.height / pixelRatio);
 			osctx5.save();
 			osctx5.translate(lcPan[0], lcPan[1]);
@@ -13056,6 +13333,7 @@ class Character {
 		this.h = th;
 		this.weight = tweight;
 		this.weight2 = tweight2;
+		this.jchCool = 0;
 		this.h2 = th2;
 		this.atEnd = false;
 		this.friction = tfriction;
@@ -13096,6 +13374,7 @@ class Character {
 		this.zapPending = false;
 		this.ragLock = 0;
 		this.hs = 0;
+		this.circ = false;
 		this.sf = 0;
 		this.zvx = 0;
 		this.zvy = 0;
