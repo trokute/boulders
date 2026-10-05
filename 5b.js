@@ -717,7 +717,9 @@ const charD = [
 	[15,50,0.1,20,0.8,true,1.9,1,true,6],
 	[25,25,0.1,20,0.8,true,1.7,1,true,6],
 	[30,540,10,20,0.4,true,0,1,true,3],
-	[15,30,0.35,13,0.7,false,0,1,true,6]
+	[15,30,0.35,13,0.7,false,0,1,true,6],
+	[5,60,0.3,20,0.7,false,0.2,1,true,6],
+	[5,60,0.3,20,0.7,false,0.2,1,true,6]
 ];
 
 const diaMouths = [
@@ -1950,6 +1952,14 @@ const charModels = [
 		burstmat: {a:1,b:0,c:0,d:1,tx:0,ty:-15},
 		charimgmat: {a:0.4,b:0,c:0,d:0.4,tx:0,ty:0},
 	},
+	{
+		burstmat: {a:0.5,b:0,c:0,d:1.5,tx:0,ty:-30},
+		charimgmat: {a:0.4,b:0,c:0,d:0.4,tx:0,ty:0},
+	},
+	{
+		burstmat: {a:0.5,b:0,c:0,d:1.5,tx:0,ty:-30},
+		charimgmat: {a:0.4,b:0,c:0,d:0.4,tx:0,ty:0},
+	},
 ];
 const names = ['Ruby','Book','Ice Cube','Match','Pencil','Bubble','Lego Brick','Waffle','Tune','','','','','','','','','','','','','','','','','','','','','','','','','','','HPRC 1','HPRC 2','Crate','Metal Box','Platform','Spike Ball','Package','Companian Cube','Rusty Apparatuses','Purple Thing','Saw Blade','Spike Ball Jr.','Pillar','Large Platform','Blue Spike Ball','Green Things','Acid Platform','Large Acid Platform','Green Block','Blue Block','Spike Wall'];
 let selectedTab = 0;
@@ -2321,6 +2331,8 @@ async function loadingScreen() {
 		svgTileBorders[i] = await createImage(resourceData['borders/tb' + i.toString().padStart(4, '0') + '.svg']);
 	}
 	resourceData['entities/e0056.svg'] = resourceData['blocks/b0013f0000.svg'];
+	resourceData['entities/e0057.svg'] = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="60" viewBox="-5 -60 10 60"><rect x="-4.5" y="-59.5" width="9" height="59" rx="2" fill="#ffffff" stroke="#808080"/></svg>');
+	resourceData['entities/e0058.svg'] = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="60" viewBox="-5 -60 10 60"><rect x="-4.5" y="-59.5" width="9" height="59" rx="2" fill="#ff0000" stroke="#990000"/></svg>');
 	for (let i = 0; i < charD.length; i++) {
 		let id = i.toString().padStart(4, '0');
 		if (charD[i][7] < 1) continue;
@@ -3507,6 +3519,7 @@ function drawLevel(context) {
 	// We draw the characters in here so we can layer liquids above them.
 	drawCharacters(context);
 	drawRopes(context);
+	drawLasers(context);
 	// Draw Liquids
 	for (let j = 0; j < tileDepths[3].length; j++) {
 		addTileMovieClip(tileDepths[3][j].x, tileDepths[3][j].y, context);
@@ -6418,6 +6431,7 @@ function rbSim() {
 	for (let s = 0; s < n; s++) rbSub(bs, 1 / n);
 	for (let b of bs) {
 		let c = b.c;
+		c.pvy = b.sl || b.pin ? 0 : b.vy0;
 		if (b.pin) {
 			c.vx = 0;
 			c.vy = 0;
@@ -6503,6 +6517,134 @@ function bounceDir(i, dx, dy) {
 	}
 }
 
+function springLand(i) {
+	let c = char[i];
+	if (!rbOn(i) || !(c.pvy >= 1) || c.vy < -1 || Math.abs(rbAng(c.ang)) > 0.2) return false;
+	let ty = Math.round(c.y / 30);
+	if (Math.abs(c.y - ty * 30) > 4) return false;
+	for (let tx = Math.floor((c.x - c.w + 2) / 30); tx <= Math.floor((c.x + c.w - 2) / 30); tx++) {
+		if (outOfRange(tx, ty) || thisLevel[ty][tx] != 13) continue;
+		c.vy = -jumpPower * 1.66;
+		c.onob = false;
+		c.slp = 0;
+		c.tcd = 8;
+		if (tileFrames[ty] && tileFrames[ty][tx]) {
+			tileFrames[ty][tx].playing = true;
+			tileFrames[ty][tx].cf = 1;
+		}
+		return true;
+	}
+	return false;
+}
+
+function laserTile(ox, oy, ux, uy, max) {
+	let tx = Math.floor(ox / 30);
+	let ty = Math.floor(oy / 30);
+	let sx = ux > 0 ? 1 : -1;
+	let sy = uy > 0 ? 1 : -1;
+	let dx = ux == 0 ? 1e9 : Math.abs(30 / ux);
+	let dy = uy == 0 ? 1e9 : Math.abs(30 / uy);
+	let nx = ux == 0 ? 1e9 : ((ux > 0 ? tx + 1 : tx) * 30 - ox) / ux;
+	let ny = uy == 0 ? 1e9 : ((uy > 0 ? ty + 1 : ty) * 30 - oy) / uy;
+	let t = 0;
+	while (t < max) {
+		if (allSolid(rbTile(tx, ty))) return t;
+		if (nx < ny) {
+			t = nx;
+			nx += dx;
+			tx += sx;
+		} else {
+			t = ny;
+			ny += dy;
+			ty += sy;
+		}
+	}
+	return max;
+}
+
+function laserBox(c, ox, oy, ux, uy, max) {
+	let d = charD[c.id];
+	let hw = c.soft ? c.w : d[0];
+	let hh = c.soft ? c.h / 2 : d[1] / 2;
+	let a = c.soft ? 0 : c.ang;
+	let s = Math.sin(a);
+	let k = Math.cos(a);
+	let rx = ox - c.x;
+	let ry = oy - (c.y - c.h / 2);
+	let px = rx * k + ry * s;
+	let py = -rx * s + ry * k;
+	let vx = ux * k + uy * s;
+	let vy = -ux * s + uy * k;
+	let t0 = 0;
+	let t1 = max;
+	if (Math.abs(vx) < 1e-9) {
+		if (Math.abs(px) > hw) return -1;
+	} else {
+		let a1 = (-hw - px) / vx;
+		let a2 = (hw - px) / vx;
+		t0 = Math.max(t0, Math.min(a1, a2));
+		t1 = Math.min(t1, Math.max(a1, a2));
+	}
+	if (Math.abs(vy) < 1e-9) {
+		if (Math.abs(py) > hh) return -1;
+	} else {
+		let a1 = (-hh - py) / vy;
+		let a2 = (hh - py) / vy;
+		t0 = Math.max(t0, Math.min(a1, a2));
+		t1 = Math.min(t1, Math.max(a1, a2));
+	}
+	return t0 <= t1 ? t0 : -1;
+}
+
+function laserCast(i) {
+	let c = char[i];
+	if (c.charState < 3) return null;
+	let h = charD[c.id][1] / 2;
+	let ux = Math.sin(c.ang);
+	let uy = -Math.cos(c.ang);
+	let ox = c.x + ux * h;
+	let oy = c.y - c.h / 2 + uy * h;
+	let len = laserTile(ox, oy, ux, uy, 2000);
+	let hit = -1;
+	for (let j = 0; j < charCount; j++) {
+		let o = char[j];
+		if (j == i || j == c.carriedBy || o.charState < 3 || charD[o.id][7] == 0) continue;
+		let t = laserBox(o, ox, oy, ux, uy, len);
+		if (t >= 0 && t < len) {
+			len = t;
+			hit = j;
+		}
+	}
+	return {x: ox, y: oy, ex: ox + ux * len, ey: oy + uy * len, hit: hit};
+}
+
+function laserStep() {
+	for (let i = 0; i < charCount; i++) {
+		if (char[i].id != 58) continue;
+		let r = laserCast(i);
+		if (!r || r.hit < 0) continue;
+		let o = char[r.hit];
+		if (o.charState >= 7 && o.charState != 9 && o.deathTimer >= 30) startDeath(r.hit);
+	}
+}
+
+function drawLasers(context) {
+	for (let i = 0; i < charCount; i++) {
+		if (char[i].id != 57 && char[i].id != 58) continue;
+		let r = laserCast(i);
+		if (!r) continue;
+		context.save();
+		context.lineCap = 'round';
+		context.strokeStyle = char[i].id == 58 ? '#ff0000' : '#ffffff';
+		context.lineWidth = 3;
+		context.beginPath();
+		context.moveTo(r.x, r.y);
+		context.lineTo(r.ex, r.ey);
+		context.stroke();
+		context.restore();
+	}
+}
+
 function trampCheck() {
 	for (let i = 0; i < charCount; i++) {
 		let c = char[i];
@@ -6511,6 +6653,7 @@ function trampCheck() {
 			c.tcd--;
 			continue;
 		}
+		if (springLand(i)) continue;
 		let x0 = Math.floor((c.x - c.w) / 30) - 1;
 		let x1 = Math.floor((c.x + c.w) / 30) + 1;
 		let y0 = Math.floor((c.y - c.h) / 30) - 1;
@@ -9974,6 +10117,7 @@ function draw() {
 			trampCheck();
 			rbSim();
 			softSim();
+			laserStep();
 			waterStep();
 			for (let i = 0; i < charCount; i++) {
 				if (char[i].carry) {
